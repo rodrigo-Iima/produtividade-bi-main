@@ -1,0 +1,2992 @@
+{
+  "surface": "dashboard",
+  "manifest": {
+    "version": 1,
+    "surface": "dashboard",
+    "title": "Gestão à vista — Produtividade",
+    "description": "Snapshot operacional das horas Clockify e da execução de tickets Jira nas sprints de 2026.",
+    "generatedAt": "2026-07-18T00:06:44.043160+00:00",
+    "filters": [
+      {
+        "id": "sprint_filter",
+        "label": "Sprint",
+        "dataset": "hours_by_sprint",
+        "field": "sprint_name",
+        "includeAll": true,
+        "targets": [
+          {
+            "dataset": "hours_by_sprint",
+            "field": "sprint_name"
+          },
+          {
+            "dataset": "hours_by_tag_sprint",
+            "field": "sprint_name"
+          },
+          {
+            "dataset": "tickets_by_sprint",
+            "field": "sprint_name"
+          }
+        ]
+      },
+      {
+        "id": "tag_filter",
+        "label": "Tag",
+        "dataset": "hours_by_tag",
+        "field": "tag_name",
+        "includeAll": true,
+        "targets": [
+          {
+            "dataset": "hours_by_tag",
+            "field": "tag_name"
+          },
+          {
+            "dataset": "hours_by_tag_sprint",
+            "field": "tag_name"
+          }
+        ]
+      },
+      {
+        "id": "squad_filter",
+        "label": "Squad do colaborador",
+        "dataset": "hours_by_squad",
+        "field": "squad_name",
+        "includeAll": true,
+        "targets": [
+          {
+            "dataset": "hours_by_squad",
+            "field": "squad_name"
+          }
+        ]
+      },
+      {
+        "id": "focus_filter",
+        "label": "Foco",
+        "dataset": "hours_by_tag",
+        "field": "foco_flag",
+        "includeAll": true,
+        "targets": [
+          {
+            "dataset": "hours_by_tag",
+            "field": "foco_flag"
+          },
+          {
+            "dataset": "hours_by_tag_sprint",
+            "field": "foco_flag"
+          }
+        ]
+      }
+    ],
+    "cards": [
+      {
+        "id": "hours_total_card",
+        "description": "Horas totais no grão de lançamento, sem duplicação por tag.",
+        "dataset": "clockify_kpis",
+        "sourceId": "clockify_kpi_source",
+        "metrics": [
+          {
+            "label": "Horas totais",
+            "field": "horas_total",
+            "format": "number",
+            "unit": "h"
+          }
+        ]
+      },
+      {
+        "id": "engineering_card",
+        "description": "Horas em Análise, QA, Dev e Dev-Check.",
+        "dataset": "clockify_kpis",
+        "sourceId": "clockify_kpi_source",
+        "metrics": [
+          {
+            "label": "Horas Engenharia",
+            "field": "horas_engenharia",
+            "format": "number",
+            "unit": "h"
+          }
+        ]
+      },
+      {
+        "id": "dev_card",
+        "description": "Horas lançadas com a tag Dev.",
+        "dataset": "clockify_kpis",
+        "sourceId": "clockify_kpi_source",
+        "metrics": [
+          {
+            "label": "Horas Dev",
+            "field": "horas_dev",
+            "format": "number",
+            "unit": "h"
+          }
+        ]
+      },
+      {
+        "id": "support_card",
+        "description": "QA e Dev-Check como proporção das Horas Engenharia.",
+        "dataset": "clockify_kpis",
+        "sourceId": "clockify_kpi_source",
+        "metrics": [
+          {
+            "label": "% Apoio à Entrega",
+            "field": "percentual_apoio_entrega",
+            "format": "percent"
+          }
+        ]
+      },
+      {
+        "id": "focus_card",
+        "description": "Dentro do Foco dividido pelo total elegível de foco.",
+        "dataset": "clockify_kpis",
+        "sourceId": "clockify_kpi_source",
+        "metrics": [
+          {
+            "label": "% Horas Foco",
+            "field": "percentual_horas_foco",
+            "format": "percent"
+          }
+        ]
+      },
+      {
+        "id": "tickets_total_card",
+        "description": "Tickets relacionados às sprints dentro do escopo analítico.",
+        "dataset": "jira_kpis",
+        "sourceId": "jira_sprint_source",
+        "metrics": [
+          {
+            "label": "Tickets totais",
+            "field": "tickets_total",
+            "format": "number"
+          }
+        ]
+      },
+      {
+        "id": "tickets_done_card",
+        "description": "Tickets no status agrupado Concluído.",
+        "dataset": "jira_kpis",
+        "sourceId": "jira_sprint_source",
+        "metrics": [
+          {
+            "label": "Tickets concluídos",
+            "field": "tickets_concluidos",
+            "format": "number"
+          }
+        ]
+      },
+      {
+        "id": "planned_card",
+        "description": "Tickets que já estavam na sprint no início.",
+        "dataset": "jira_kpis",
+        "sourceId": "jira_sprint_source",
+        "metrics": [
+          {
+            "label": "Planejados no início",
+            "field": "tickets_planejados_inicio",
+            "format": "number"
+          }
+        ]
+      },
+      {
+        "id": "planned_done_card",
+        "description": "Tickets planejados no início que foram concluídos.",
+        "dataset": "jira_kpis",
+        "sourceId": "jira_sprint_source",
+        "metrics": [
+          {
+            "label": "Planejados concluídos",
+            "field": "tickets_planejados_concluidos",
+            "format": "number"
+          }
+        ]
+      },
+      {
+        "id": "efficiency_card",
+        "description": "Planejados concluídos dividido pelos planejados no início.",
+        "dataset": "jira_kpis",
+        "sourceId": "jira_sprint_source",
+        "metrics": [
+          {
+            "label": "% Eficiência da Sprint",
+            "field": "eficiencia_sprint",
+            "format": "percent"
+          }
+        ]
+      }
+    ],
+    "charts": [
+      {
+        "id": "hours_sprint_chart",
+        "title": "Horas atribuídas por sprint",
+        "subtitle": "Considera atribuições de sprint com status atribuído.",
+        "type": "bar",
+        "dataset": "hours_by_sprint",
+        "sourceId": "clockify_sprint_source",
+        "valueFormat": "number",
+        "encodings": {
+          "x": {
+            "field": "sprint_name",
+            "type": "nominal",
+            "label": "Sprint"
+          },
+          "y": {
+            "field": "hours",
+            "type": "quantitative",
+            "label": "Horas"
+          },
+          "tooltip": [
+            {
+              "field": "assignment_status",
+              "type": "nominal",
+              "label": "Atribuição"
+            },
+            {
+              "field": "hours",
+              "type": "quantitative",
+              "label": "Horas",
+              "format": "number"
+            }
+          ]
+        }
+      },
+      {
+        "id": "hours_tag_chart",
+        "title": "Horas por tag",
+        "subtitle": "Exibe as 15 maiores categorias de horas no snapshot.",
+        "type": "bar",
+        "dataset": "hours_by_tag_top",
+        "sourceId": "clockify_tag_source",
+        "valueFormat": "number",
+        "encodings": {
+          "x": {
+            "field": "tag_name",
+            "type": "nominal",
+            "label": "Tag"
+          },
+          "y": {
+            "field": "hours",
+            "type": "quantitative",
+            "label": "Horas"
+          },
+          "tooltip": [
+            {
+              "field": "foco_flag",
+              "type": "nominal",
+              "label": "Foco"
+            },
+            {
+              "field": "hours",
+              "type": "quantitative",
+              "label": "Horas",
+              "format": "number"
+            }
+          ]
+        }
+      },
+      {
+        "id": "efficiency_chart",
+        "title": "Eficiência da sprint",
+        "subtitle": "Proporção de tickets planejados no início que foram concluídos.",
+        "type": "bar",
+        "dataset": "tickets_by_sprint",
+        "sourceId": "jira_sprint_source",
+        "valueFormat": "percent",
+        "encodings": {
+          "x": {
+            "field": "sprint_name",
+            "type": "nominal",
+            "label": "Sprint"
+          },
+          "y": {
+            "field": "eficiencia_sprint",
+            "type": "quantitative",
+            "label": "Eficiência",
+            "format": "percent"
+          },
+          "tooltip": [
+            {
+              "field": "tickets_planejados_inicio",
+              "type": "quantitative",
+              "label": "Planejados"
+            },
+            {
+              "field": "tickets_planejados_concluidos",
+              "type": "quantitative",
+              "label": "Planejados concluídos"
+            }
+          ]
+        }
+      }
+    ],
+    "tables": [
+      {
+        "id": "squad_table",
+        "title": "Horas por squad do colaborador",
+        "subtitle": "Total de horas no grão de lançamento, sem duplicação por tag ou sprint.",
+        "dataset": "hours_by_squad",
+        "sourceId": "clockify_entry_source",
+        "defaultSort": {
+          "field": "hours",
+          "direction": "desc"
+        },
+        "columns": [
+          {
+            "field": "squad_name",
+            "label": "Squad",
+            "type": "text"
+          },
+          {
+            "field": "hours",
+            "label": "Horas",
+            "format": "number"
+          }
+        ]
+      },
+      {
+        "id": "tag_sprint_table",
+        "title": "Horas por tag e sprint",
+        "subtitle": "Base para filtros granulares como Dev em uma sprint específica.",
+        "dataset": "hours_by_tag_sprint",
+        "sourceId": "clockify_sprint_source",
+        "defaultSort": {
+          "field": "hours",
+          "direction": "desc"
+        },
+        "columns": [
+          {
+            "field": "sprint_name",
+            "label": "Sprint",
+            "type": "text"
+          },
+          {
+            "field": "tag_name",
+            "label": "Tag",
+            "type": "text"
+          },
+          {
+            "field": "foco_flag",
+            "label": "Foco",
+            "type": "text"
+          },
+          {
+            "field": "assignment_status",
+            "label": "Atribuição",
+            "type": "text"
+          },
+          {
+            "field": "hours",
+            "label": "Horas",
+            "format": "number"
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "id": "clockify_kpi_source",
+        "label": "KPIs Clockify — fato e tags",
+        "path": "queries/metrics.py",
+        "query": {
+          "engine": "PostgreSQL",
+          "language": "Python/SQLAlchemy",
+          "id": "clockify_kpi_source",
+          "sql": "SELECT * FROM vw_clockify_entry_detail; SELECT * FROM vw_clockify_entry_tag_detail;",
+          "description": "Soma de duração no grão de lançamento e cálculos derivados da relação lançamento-tag.",
+          "executed_at": "2026-07-18T00:06:44.043160+00:00",
+          "tables_used": [
+            "vw_clockify_entry_detail",
+            "vw_clockify_entry_tag_detail"
+          ],
+          "metric_definitions": [
+            "Horas totais = soma de duration_seconds / 3600 na fato de lançamentos.",
+            "Horas Engenharia = tags Análise e Levantamento de Requisitos, QA, Dev e Dev-Check.",
+            "% Apoio à Entrega = (QA + Dev-Check) / Horas Engenharia.",
+            "% Horas Foco = Dentro do Foco / (Dentro do Foco + Fora do Foco)."
+          ]
+        }
+      },
+      {
+        "id": "clockify_entry_source",
+        "label": "Horas Clockify no grão de lançamento",
+        "path": "queries/metrics.py",
+        "query": {
+          "engine": "PostgreSQL",
+          "language": "Python/SQLAlchemy",
+          "id": "clockify_entry_source",
+          "sql": "SELECT * FROM vw_clockify_entry_detail;",
+          "description": "Fonte para total sem duplicação e horas por squad do colaborador.",
+          "executed_at": "2026-07-18T00:06:44.043160+00:00",
+          "tables_used": [
+            "vw_clockify_entry_detail"
+          ],
+          "metric_definitions": [
+            "Cada linha representa um lançamento Clockify."
+          ]
+        }
+      },
+      {
+        "id": "clockify_tag_source",
+        "label": "Horas Clockify por tag",
+        "path": "queries/metrics.py",
+        "query": {
+          "engine": "PostgreSQL",
+          "language": "Python/SQLAlchemy",
+          "id": "clockify_tag_source",
+          "sql": "SELECT * FROM vw_clockify_entry_tag_detail;",
+          "description": "Fonte para a relação lançamento-tag e o detalhamento de foco.",
+          "executed_at": "2026-07-18T00:06:44.043160+00:00",
+          "tables_used": [
+            "vw_clockify_entry_tag_detail"
+          ],
+          "metric_definitions": [
+            "Lançamentos com múltiplas tags contam integralmente em cada tag."
+          ]
+        }
+      },
+      {
+        "id": "clockify_sprint_source",
+        "label": "Horas Clockify por sprint",
+        "path": "queries/metrics.py",
+        "query": {
+          "engine": "PostgreSQL",
+          "language": "Python/SQLAlchemy",
+          "id": "clockify_sprint_source",
+          "sql": "SELECT * FROM vw_clockify_entry_sprint_detail;",
+          "description": "Fonte para atribuições de sprint e cruzamento tag × sprint.",
+          "executed_at": "2026-07-18T00:06:44.043160+00:00",
+          "tables_used": [
+            "vw_clockify_entry_sprint_detail"
+          ],
+          "metric_definitions": [
+            "O snapshot considera atribuições com status atribuído por padrão."
+          ]
+        }
+      },
+      {
+        "id": "jira_sprint_source",
+        "label": "Execução Jira por sprint",
+        "path": "queries/metrics.py",
+        "query": {
+          "engine": "PostgreSQL",
+          "language": "Python/SQLAlchemy",
+          "id": "jira_sprint_source",
+          "sql": "SELECT * FROM vw_jira_ticket_sprint_detail;",
+          "description": "Fonte para tickets concluídos, planejamento e eficiência das sprints.",
+          "executed_at": "2026-07-18T00:06:44.043160+00:00",
+          "tables_used": [
+            "vw_jira_ticket_sprint_detail"
+          ],
+          "metric_definitions": [
+            "Eficiência = tickets planejados concluídos / tickets planejados no início."
+          ]
+        }
+      }
+    ],
+    "blocks": [
+      {
+        "id": "definition",
+        "type": "markdown",
+        "body": "## Como ler este painel\n\n- O total de horas vem diretamente da fato de lançamentos.\n- Horas por tag podem superar o total porque lançamentos com múltiplas tags contam integralmente em cada tag.\n- O percentual de foco exclui `Sem Papel Definido`.\n- A eficiência usa o histórico do Jira para identificar o planejamento no início da sprint."
+      },
+      {
+        "id": "clockify_metrics",
+        "type": "metric-strip",
+        "cardIds": [
+          "hours_total_card",
+          "engineering_card",
+          "dev_card",
+          "support_card",
+          "focus_card"
+        ]
+      },
+      {
+        "id": "jira_metrics",
+        "type": "metric-strip",
+        "cardIds": [
+          "tickets_total_card",
+          "tickets_done_card",
+          "planned_card",
+          "planned_done_card",
+          "efficiency_card"
+        ]
+      },
+      {
+        "id": "hours_sprint",
+        "type": "chart",
+        "chartId": "hours_sprint_chart"
+      },
+      {
+        "id": "hours_tag",
+        "type": "chart",
+        "chartId": "hours_tag_chart"
+      },
+      {
+        "id": "efficiency",
+        "type": "chart",
+        "chartId": "efficiency_chart"
+      },
+      {
+        "id": "squads",
+        "type": "table",
+        "tableId": "squad_table"
+      },
+      {
+        "id": "tag_sprint",
+        "type": "table",
+        "tableId": "tag_sprint_table"
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-07-18T00:06:44.043160+00:00",
+    "status": "ready",
+    "datasets": {
+      "clockify_kpis": [
+        {
+          "horas_total": 21399.1375,
+          "horas_engenharia": 8021.54,
+          "horas_dev": 5551.056111111111,
+          "horas_apoio_entrega": 1328.9016666666666,
+          "percentual_apoio_entrega": 0.1656666508758501,
+          "horas_dentro_foco": 8413.411666666667,
+          "horas_total_foco": 18186.65388888889,
+          "percentual_horas_foco": 0.4626146028878258
+        }
+      ],
+      "jira_kpis": [
+        {
+          "tickets_total": 647,
+          "tickets_concluidos": 545,
+          "tickets_planejados_inicio": 387,
+          "tickets_planejados_concluidos": 303,
+          "eficiencia_sprint": 0.7829457364341085
+        }
+      ],
+      "hours_by_squad": [
+        {
+          "squad_id": 4,
+          "squad_name": "Operadoras",
+          "hours": 5432.898611111111
+        },
+        {
+          "squad_id": 3,
+          "squad_name": "Núcleo",
+          "hours": 5128.368333333333
+        },
+        {
+          "squad_id": 7,
+          "squad_name": "Transversal",
+          "hours": 3912.2463888888888
+        },
+        {
+          "squad_id": 11,
+          "squad_name": "ZGT - Sustentação",
+          "hours": 2136.0808333333334
+        },
+        {
+          "squad_id": 5,
+          "squad_name": "RDSL",
+          "hours": 2019.2602777777777
+        },
+        {
+          "squad_id": 8,
+          "squad_name": "ZGT - Evolução",
+          "hours": 1303.5491666666667
+        },
+        {
+          "squad_id": 9,
+          "squad_name": "ZGT - Operadoras",
+          "hours": 802.3797222222222
+        },
+        {
+          "squad_id": 10,
+          "squad_name": "ZGT - RDSL",
+          "hours": 572.9708333333333
+        },
+        {
+          "squad_id": 2,
+          "squad_name": "Monitoramento",
+          "hours": 91.38333333333334
+        }
+      ],
+      "hours_by_tag": [
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "tag_name_normalized": "dev",
+          "foco_flag": "Dentro do Foco",
+          "hours": 5509.989444444444
+        },
+        {
+          "tag_id": 36,
+          "tag_name": "Daily",
+          "tag_name_normalized": "daily",
+          "foco_flag": "Fora do Foco",
+          "hours": 1316.7919444444444
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "tag_name_normalized": "analise e levantamento de requisitos",
+          "foco_flag": "Dentro do Foco",
+          "hours": 1038.1105555555555
+        },
+        {
+          "tag_id": 47,
+          "tag_name": "Plantão",
+          "tag_name_normalized": "plantao",
+          "foco_flag": "Fora do Foco",
+          "hours": 988.7466666666667
+        },
+        {
+          "tag_id": 19,
+          "tag_name": "Reunião Interna",
+          "tag_name_normalized": "reuniao interna",
+          "foco_flag": "Fora do Foco",
+          "hours": 829.4286111111111
+        },
+        {
+          "tag_id": 34,
+          "tag_name": "Ações internas",
+          "tag_name_normalized": "acoes internas",
+          "foco_flag": "Fora do Foco",
+          "hours": 807.9344444444445
+        },
+        {
+          "tag_id": 4,
+          "tag_name": "Monitoramento",
+          "tag_name_normalized": "monitoramento",
+          "foco_flag": "Fora do Foco",
+          "hours": 774.8991666666667
+        },
+        {
+          "tag_id": 44,
+          "tag_name": "Alinhamento interno",
+          "tag_name_normalized": "alinhamento interno",
+          "foco_flag": "Fora do Foco",
+          "hours": 606.4469444444444
+        },
+        {
+          "tag_id": 40,
+          "tag_name": "Suporte interno",
+          "tag_name_normalized": "suporte interno",
+          "foco_flag": "Fora do Foco",
+          "hours": 575.7816666666666
+        },
+        {
+          "tag_id": 37,
+          "tag_name": "Comunicações",
+          "tag_name_normalized": "comunicacoes",
+          "foco_flag": "Fora do Foco",
+          "hours": 566.1997222222222
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "tag_name_normalized": "qa",
+          "foco_flag": "Dentro do Foco",
+          "hours": 546.9572222222222
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "tag_name_normalized": "dev-check",
+          "foco_flag": "Dentro do Foco",
+          "hours": 413.3286111111111
+        },
+        {
+          "tag_id": 43,
+          "tag_name": "Movidesk",
+          "tag_name_normalized": "movidesk",
+          "foco_flag": "Fora do Foco",
+          "hours": 373.06111111111113
+        },
+        {
+          "tag_id": 17,
+          "tag_name": "UI/UX Design",
+          "tag_name_normalized": "ui/ux design",
+          "foco_flag": "Dentro do Foco",
+          "hours": 366.7263888888889
+        },
+        {
+          "tag_id": 43,
+          "tag_name": "Movidesk",
+          "tag_name_normalized": "movidesk",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 354.5597222222222
+        },
+        {
+          "tag_id": 61,
+          "tag_name": "Melhoria",
+          "tag_name_normalized": "melhoria",
+          "foco_flag": "Fora do Foco",
+          "hours": 236.65555555555557
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "tag_name_normalized": "qa",
+          "foco_flag": "Fora do Foco",
+          "hours": 194.9272222222222
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "tag_name_normalized": "qa",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 173.6886111111111
+        },
+        {
+          "tag_id": 41,
+          "tag_name": "Merge",
+          "tag_name_normalized": "merge",
+          "foco_flag": "Fora do Foco",
+          "hours": 158.90805555555556
+        },
+        {
+          "tag_id": 46,
+          "tag_name": "Treinamento",
+          "tag_name_normalized": "treinamento",
+          "foco_flag": "Fora do Foco",
+          "hours": 147.93583333333333
+        },
+        {
+          "tag_id": 47,
+          "tag_name": "Plantão",
+          "tag_name_normalized": "plantao",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 140.25694444444446
+        },
+        {
+          "tag_id": 20,
+          "tag_name": "Reunião Externa",
+          "tag_name_normalized": "reuniao externa",
+          "foco_flag": "Fora do Foco",
+          "hours": 139.41472222222222
+        },
+        {
+          "tag_id": 50,
+          "tag_name": "Deploy",
+          "tag_name_normalized": "deploy",
+          "foco_flag": "Fora do Foco",
+          "hours": 132.38361111111112
+        },
+        {
+          "tag_id": 10,
+          "tag_name": "Definição e Gestão de SLIs e SLOs",
+          "tag_name_normalized": "definicao e gestao de slis e slos",
+          "foco_flag": "Fora do Foco",
+          "hours": 126.325
+        },
+        {
+          "tag_id": 19,
+          "tag_name": "Reunião Interna",
+          "tag_name_normalized": "reuniao interna",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 118.0513888888889
+        },
+        {
+          "tag_id": 3,
+          "tag_name": "Documentação",
+          "tag_name_normalized": "documentacao",
+          "foco_flag": "Dentro do Foco",
+          "hours": 117.90694444444445
+        },
+        {
+          "tag_id": 35,
+          "tag_name": "Comitê",
+          "tag_name_normalized": "comite",
+          "foco_flag": "Fora do Foco",
+          "hours": 116.89166666666667
+        },
+        {
+          "tag_id": 24,
+          "tag_name": "Visibilidade",
+          "tag_name_normalized": "visibilidade",
+          "foco_flag": "Fora do Foco",
+          "hours": 104.7088888888889
+        },
+        {
+          "tag_id": 20,
+          "tag_name": "Reunião Externa",
+          "tag_name_normalized": "reuniao externa",
+          "foco_flag": "Dentro do Foco",
+          "hours": 101.37666666666667
+        },
+        {
+          "tag_id": 32,
+          "tag_name": "Apoio a outras equipes",
+          "tag_name_normalized": "apoio a outras equipes",
+          "foco_flag": "Fora do Foco",
+          "hours": 93.275
+        },
+        {
+          "tag_id": 38,
+          "tag_name": "Feedbacks/1:1",
+          "tag_name_normalized": "feedbacks/1:1",
+          "foco_flag": "Fora do Foco",
+          "hours": 92.13111111111111
+        },
+        {
+          "tag_id": 49,
+          "tag_name": "Análise técnica - sustentação",
+          "tag_name_normalized": "analise tecnica - sustentacao",
+          "foco_flag": "Fora do Foco",
+          "hours": 87.05361111111111
+        },
+        {
+          "tag_id": 19,
+          "tag_name": "Reunião Interna",
+          "tag_name_normalized": "reuniao interna",
+          "foco_flag": "Dentro do Foco",
+          "hours": 72.02833333333334
+        },
+        {
+          "tag_id": 63,
+          "tag_name": "Planejamento e alinhamentos estratégicos",
+          "tag_name_normalized": "planejamento e alinhamentos estrategicos",
+          "foco_flag": "Fora do Foco",
+          "hours": 71.86638888888889
+        },
+        {
+          "tag_id": 55,
+          "tag_name": "Hacker Rangers",
+          "tag_name_normalized": "hacker rangers",
+          "foco_flag": "Fora do Foco",
+          "hours": 69.25111111111111
+        },
+        {
+          "tag_id": 24,
+          "tag_name": "Visibilidade",
+          "tag_name_normalized": "visibilidade",
+          "foco_flag": "Dentro do Foco",
+          "hours": 67.53805555555556
+        },
+        {
+          "tag_id": 5,
+          "tag_name": "Análise de viabilidade",
+          "tag_name_normalized": "analise de viabilidade",
+          "foco_flag": "Dentro do Foco",
+          "hours": 65.9025
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "tag_name_normalized": "analise e levantamento de requisitos",
+          "foco_flag": "Fora do Foco",
+          "hours": 61.257777777777775
+        },
+        {
+          "tag_id": 48,
+          "tag_name": "Data Driven",
+          "tag_name_normalized": "data driven",
+          "foco_flag": "Fora do Foco",
+          "hours": 58.815555555555555
+        },
+        {
+          "tag_id": 18,
+          "tag_name": "Validação de Solução",
+          "tag_name_normalized": "validacao de solucao",
+          "foco_flag": "Fora do Foco",
+          "hours": 58.531666666666666
+        },
+        {
+          "tag_id": 71,
+          "tag_name": "Quinzenal",
+          "tag_name_normalized": "quinzenal",
+          "foco_flag": "Fora do Foco",
+          "hours": 58.42888888888889
+        },
+        {
+          "tag_id": 69,
+          "tag_name": "Subtarefa-QA",
+          "tag_name_normalized": "subtarefa-qa",
+          "foco_flag": "Fora do Foco",
+          "hours": 50.081944444444446
+        },
+        {
+          "tag_id": 70,
+          "tag_name": "Weekly",
+          "tag_name_normalized": "weekly",
+          "foco_flag": "Fora do Foco",
+          "hours": 45.441944444444445
+        },
+        {
+          "tag_id": 13,
+          "tag_name": "Resposta a Incidentes",
+          "tag_name_normalized": "resposta a incidentes",
+          "foco_flag": "Fora do Foco",
+          "hours": 44.841944444444444
+        },
+        {
+          "tag_id": 36,
+          "tag_name": "Daily",
+          "tag_name_normalized": "daily",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 43.798611111111114
+        },
+        {
+          "tag_id": 33,
+          "tag_name": "Avaliação de Desempenho",
+          "tag_name_normalized": "avaliacao de desempenho",
+          "foco_flag": "Fora do Foco",
+          "hours": 43.72083333333333
+        },
+        {
+          "tag_id": 22,
+          "tag_name": "Acompanhamento Sprint",
+          "tag_name_normalized": "acompanhamento sprint",
+          "foco_flag": "Fora do Foco",
+          "hours": 42.744166666666665
+        },
+        {
+          "tag_id": 3,
+          "tag_name": "Documentação",
+          "tag_name_normalized": "documentacao",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 42.60388888888889
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "tag_name_normalized": "analise e levantamento de requisitos",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 42.21388888888889
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "tag_name_normalized": "dev",
+          "foco_flag": "Fora do Foco",
+          "hours": 41.06666666666667
+        },
+        {
+          "tag_id": 31,
+          "tag_name": "Acelera",
+          "tag_name_normalized": "acelera",
+          "foco_flag": "Fora do Foco",
+          "hours": 36.1075
+        },
+        {
+          "tag_id": 39,
+          "tag_name": "Suporte ao cliente",
+          "tag_name_normalized": "suporte ao cliente",
+          "foco_flag": "Fora do Foco",
+          "hours": 35.3
+        },
+        {
+          "tag_id": 83,
+          "tag_name": "Força tarefa",
+          "tag_name_normalized": "forca tarefa",
+          "foco_flag": "Fora do Foco",
+          "hours": 31.587222222222223
+        },
+        {
+          "tag_id": 84,
+          "tag_name": "Débito Técnico",
+          "tag_name_normalized": "debito tecnico",
+          "foco_flag": "Fora do Foco",
+          "hours": 30.705
+        },
+        {
+          "tag_id": 2,
+          "tag_name": "Criação de painéis",
+          "tag_name_normalized": "criacao de paineis",
+          "foco_flag": "Fora do Foco",
+          "hours": 28.968333333333334
+        },
+        {
+          "tag_id": 67,
+          "tag_name": "UX Design",
+          "tag_name_normalized": "ux design",
+          "foco_flag": "Fora do Foco",
+          "hours": 27.924444444444443
+        },
+        {
+          "tag_id": 66,
+          "tag_name": "Subtarefa-DevCheck",
+          "tag_name_normalized": "subtarefa-devcheck",
+          "foco_flag": "Fora do Foco",
+          "hours": 25.364722222222223
+        },
+        {
+          "tag_id": 21,
+          "tag_name": "Definição e Priorização de backlog",
+          "tag_name_normalized": "definicao e priorizacao de backlog",
+          "foco_flag": "Dentro do Foco",
+          "hours": 25.055
+        },
+        {
+          "tag_id": 80,
+          "tag_name": "1:1",
+          "tag_name_normalized": "1:1",
+          "foco_flag": "Fora do Foco",
+          "hours": 24.0
+        },
+        {
+          "tag_id": 3,
+          "tag_name": "Documentação",
+          "tag_name_normalized": "documentacao",
+          "foco_flag": "Fora do Foco",
+          "hours": 23.114444444444445
+        },
+        {
+          "tag_id": 17,
+          "tag_name": "UI/UX Design",
+          "tag_name_normalized": "ui/ux design",
+          "foco_flag": "Fora do Foco",
+          "hours": 20.281666666666666
+        },
+        {
+          "tag_id": 97,
+          "tag_name": "Sustentação",
+          "tag_name_normalized": "sustentacao",
+          "foco_flag": "Fora do Foco",
+          "hours": 19.911666666666665
+        },
+        {
+          "tag_id": 79,
+          "tag_name": "QA em Produção",
+          "tag_name_normalized": "qa em producao",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 19.53638888888889
+        },
+        {
+          "tag_id": 14,
+          "tag_name": "Acompanhamento de Métricas",
+          "tag_name_normalized": "acompanhamento de metricas",
+          "foco_flag": "Dentro do Foco",
+          "hours": 19.474722222222223
+        },
+        {
+          "tag_id": 68,
+          "tag_name": "Estimativa",
+          "tag_name_normalized": "estimativa",
+          "foco_flag": "Fora do Foco",
+          "hours": 19.27888888888889
+        },
+        {
+          "tag_id": 20,
+          "tag_name": "Reunião Externa",
+          "tag_name_normalized": "reuniao externa",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 18.212777777777777
+        },
+        {
+          "tag_id": 52,
+          "tag_name": "Recrutamento",
+          "tag_name_normalized": "recrutamento",
+          "foco_flag": "Fora do Foco",
+          "hours": 17.983333333333334
+        },
+        {
+          "tag_id": 77,
+          "tag_name": "Estudos",
+          "tag_name_normalized": "estudos",
+          "foco_flag": "Fora do Foco",
+          "hours": 17.948888888888888
+        },
+        {
+          "tag_id": 45,
+          "tag_name": "Ação no Banco de Dados",
+          "tag_name_normalized": "acao no banco de dados",
+          "foco_flag": "Fora do Foco",
+          "hours": 17.886388888888888
+        },
+        {
+          "tag_id": 51,
+          "tag_name": "Onboarding",
+          "tag_name_normalized": "onboarding",
+          "foco_flag": "Fora do Foco",
+          "hours": 17.487222222222222
+        },
+        {
+          "tag_id": 34,
+          "tag_name": "Ações internas",
+          "tag_name_normalized": "acoes internas",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 15.745833333333334
+        },
+        {
+          "tag_id": 29,
+          "tag_name": "Operacional",
+          "tag_name_normalized": "operacional",
+          "foco_flag": "Fora do Foco",
+          "hours": 15.5
+        },
+        {
+          "tag_id": 64,
+          "tag_name": "Gestão de atividades",
+          "tag_name_normalized": "gestao de atividades",
+          "foco_flag": "Fora do Foco",
+          "hours": 14.885
+        },
+        {
+          "tag_id": 7,
+          "tag_name": "ShowCase",
+          "tag_name_normalized": "showcase",
+          "foco_flag": "Fora do Foco",
+          "hours": 13.707222222222223
+        },
+        {
+          "tag_id": 7,
+          "tag_name": "ShowCase",
+          "tag_name_normalized": "showcase",
+          "foco_flag": "Dentro do Foco",
+          "hours": 13.555277777777778
+        },
+        {
+          "tag_id": 59,
+          "tag_name": "Viagem/Deslocamento",
+          "tag_name_normalized": "viagem/deslocamento",
+          "foco_flag": "Fora do Foco",
+          "hours": 13.5
+        },
+        {
+          "tag_id": 72,
+          "tag_name": "Pausa",
+          "tag_name_normalized": "pausa",
+          "foco_flag": "Fora do Foco",
+          "hours": 13.190833333333334
+        },
+        {
+          "tag_id": 21,
+          "tag_name": "Definição e Priorização de backlog",
+          "tag_name_normalized": "definicao e priorizacao de backlog",
+          "foco_flag": "Fora do Foco",
+          "hours": 13.014722222222222
+        },
+        {
+          "tag_id": 78,
+          "tag_name": "Tarefa",
+          "tag_name_normalized": "tarefa",
+          "foco_flag": "Fora do Foco",
+          "hours": 12.433333333333334
+        },
+        {
+          "tag_id": 22,
+          "tag_name": "Acompanhamento Sprint",
+          "tag_name_normalized": "acompanhamento sprint",
+          "foco_flag": "Dentro do Foco",
+          "hours": 12.427777777777777
+        },
+        {
+          "tag_id": 56,
+          "tag_name": "SRE",
+          "tag_name_normalized": "sre",
+          "foco_flag": "Fora do Foco",
+          "hours": 10.683333333333334
+        },
+        {
+          "tag_id": 30,
+          "tag_name": "Ponto e Férias",
+          "tag_name_normalized": "ponto e ferias",
+          "foco_flag": "Dentro do Foco",
+          "hours": 10.566666666666666
+        },
+        {
+          "tag_id": 25,
+          "tag_name": "Definição de projetos",
+          "tag_name_normalized": "definicao de projetos",
+          "foco_flag": "Dentro do Foco",
+          "hours": 10.233333333333333
+        },
+        {
+          "tag_id": 26,
+          "tag_name": "Gestão de projetos",
+          "tag_name_normalized": "gestao de projetos",
+          "foco_flag": "Dentro do Foco",
+          "hours": 9.35
+        },
+        {
+          "tag_id": 44,
+          "tag_name": "Alinhamento interno",
+          "tag_name_normalized": "alinhamento interno",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 8.930277777777778
+        },
+        {
+          "tag_id": 82,
+          "tag_name": "Operação Assistida",
+          "tag_name_normalized": "operacao assistida",
+          "foco_flag": "Fora do Foco",
+          "hours": 8.9225
+        },
+        {
+          "tag_id": 54,
+          "tag_name": "Tarefa - Recorrente",
+          "tag_name_normalized": "tarefa - recorrente",
+          "foco_flag": "Fora do Foco",
+          "hours": 8.451666666666666
+        },
+        {
+          "tag_id": 79,
+          "tag_name": "QA em Produção",
+          "tag_name_normalized": "qa em producao",
+          "foco_flag": "Fora do Foco",
+          "hours": 8.261944444444444
+        },
+        {
+          "tag_id": 100,
+          "tag_name": "Definição de backlog",
+          "tag_name_normalized": "definicao de backlog",
+          "foco_flag": "Fora do Foco",
+          "hours": 8.212222222222222
+        },
+        {
+          "tag_id": 86,
+          "tag_name": "Implantação",
+          "tag_name_normalized": "implantacao",
+          "foco_flag": "Fora do Foco",
+          "hours": 7.65
+        },
+        {
+          "tag_id": 92,
+          "tag_name": "capacity",
+          "tag_name_normalized": "capacity",
+          "foco_flag": "Fora do Foco",
+          "hours": 7.383333333333334
+        },
+        {
+          "tag_id": 93,
+          "tag_name": "kafka",
+          "tag_name_normalized": "kafka",
+          "foco_flag": "Fora do Foco",
+          "hours": 7.383333333333334
+        },
+        {
+          "tag_id": 94,
+          "tag_name": "kubernetes",
+          "tag_name_normalized": "kubernetes",
+          "foco_flag": "Fora do Foco",
+          "hours": 7.383333333333334
+        },
+        {
+          "tag_id": 95,
+          "tag_name": "rededor",
+          "tag_name_normalized": "rededor",
+          "foco_flag": "Fora do Foco",
+          "hours": 7.383333333333334
+        },
+        {
+          "tag_id": 28,
+          "tag_name": "Gestão de pessoas",
+          "tag_name_normalized": "gestao de pessoas",
+          "foco_flag": "Fora do Foco",
+          "hours": 7.123611111111111
+        },
+        {
+          "tag_id": 29,
+          "tag_name": "Operacional",
+          "tag_name_normalized": "operacional",
+          "foco_flag": "Dentro do Foco",
+          "hours": 6.616666666666666
+        },
+        {
+          "tag_id": 58,
+          "tag_name": "Userflow",
+          "tag_name_normalized": "userflow",
+          "foco_flag": "Fora do Foco",
+          "hours": 6.551111111111111
+        },
+        {
+          "tag_id": 76,
+          "tag_name": "Check-in OKR",
+          "tag_name_normalized": "check-in okr",
+          "foco_flag": "Fora do Foco",
+          "hours": 6.313888888888889
+        },
+        {
+          "tag_id": 98,
+          "tag_name": "Relatórios_e_paineis",
+          "tag_name_normalized": "relatorios_e_paineis",
+          "foco_flag": "Fora do Foco",
+          "hours": 5.737777777777778
+        },
+        {
+          "tag_id": 46,
+          "tag_name": "Treinamento",
+          "tag_name_normalized": "treinamento",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 5.620833333333334
+        },
+        {
+          "tag_id": 87,
+          "tag_name": "Extra",
+          "tag_name_normalized": "extra",
+          "foco_flag": "Fora do Foco",
+          "hours": 5.533055555555555
+        },
+        {
+          "tag_id": 73,
+          "tag_name": "Correções DevCheck",
+          "tag_name_normalized": "correcoes devcheck",
+          "foco_flag": "Fora do Foco",
+          "hours": 5.2186111111111115
+        },
+        {
+          "tag_id": 55,
+          "tag_name": "Hacker Rangers",
+          "tag_name_normalized": "hacker rangers",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 5.166388888888889
+        },
+        {
+          "tag_id": 89,
+          "tag_name": "Preparação de conteúdo",
+          "tag_name_normalized": "preparacao de conteudo",
+          "foco_flag": "Fora do Foco",
+          "hours": 4.951944444444444
+        },
+        {
+          "tag_id": 75,
+          "tag_name": "ZGT",
+          "tag_name_normalized": "zgt",
+          "foco_flag": "Fora do Foco",
+          "hours": 4.083333333333333
+        },
+        {
+          "tag_id": 53,
+          "tag_name": "Análise técnica - evolução",
+          "tag_name_normalized": "analise tecnica - evolucao",
+          "foco_flag": "Fora do Foco",
+          "hours": 4.033611111111111
+        },
+        {
+          "tag_id": 26,
+          "tag_name": "Gestão de projetos",
+          "tag_name_normalized": "gestao de projetos",
+          "foco_flag": "Fora do Foco",
+          "hours": 3.848333333333333
+        },
+        {
+          "tag_id": 74,
+          "tag_name": "Lançamento de horas",
+          "tag_name_normalized": "lancamento de horas",
+          "foco_flag": "Fora do Foco",
+          "hours": 3.710277777777778
+        },
+        {
+          "tag_id": 23,
+          "tag_name": "Gestão de entregas",
+          "tag_name_normalized": "gestao de entregas",
+          "foco_flag": "Fora do Foco",
+          "hours": 3.096388888888889
+        },
+        {
+          "tag_id": 28,
+          "tag_name": "Gestão de pessoas",
+          "tag_name_normalized": "gestao de pessoas",
+          "foco_flag": "Dentro do Foco",
+          "hours": 3.0
+        },
+        {
+          "tag_id": 65,
+          "tag_name": "Incidente",
+          "tag_name_normalized": "incidente",
+          "foco_flag": "Fora do Foco",
+          "hours": 2.85
+        },
+        {
+          "tag_id": 99,
+          "tag_name": "Criacao_Aplicacao",
+          "tag_name_normalized": "criacao_aplicacao",
+          "foco_flag": "Fora do Foco",
+          "hours": 2.65
+        },
+        {
+          "tag_id": 16,
+          "tag_name": "Teste usabilidade",
+          "tag_name_normalized": "teste usabilidade",
+          "foco_flag": "Fora do Foco",
+          "hours": 2.5258333333333334
+        },
+        {
+          "tag_id": 81,
+          "tag_name": "Workshop",
+          "tag_name_normalized": "workshop",
+          "foco_flag": "Fora do Foco",
+          "hours": 2.5241666666666664
+        },
+        {
+          "tag_id": 27,
+          "tag_name": "Removendo impedimentos",
+          "tag_name_normalized": "removendo impedimentos",
+          "foco_flag": "Fora do Foco",
+          "hours": 2.4919444444444445
+        },
+        {
+          "tag_id": 5,
+          "tag_name": "Análise de viabilidade",
+          "tag_name_normalized": "analise de viabilidade",
+          "foco_flag": "Fora do Foco",
+          "hours": 2.3
+        },
+        {
+          "tag_id": 30,
+          "tag_name": "Ponto e Férias",
+          "tag_name_normalized": "ponto e ferias",
+          "foco_flag": "Fora do Foco",
+          "hours": 2.1005555555555557
+        },
+        {
+          "tag_id": 11,
+          "tag_name": "Automação e redução de Toil",
+          "tag_name_normalized": "automacao e reducao de toil",
+          "foco_flag": "Fora do Foco",
+          "hours": 1.7441666666666666
+        },
+        {
+          "tag_id": 15,
+          "tag_name": "Descoberta",
+          "tag_name_normalized": "descoberta",
+          "foco_flag": "Dentro do Foco",
+          "hours": 1.6675
+        },
+        {
+          "tag_id": 80,
+          "tag_name": "1:1",
+          "tag_name_normalized": "1:1",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 1.5269444444444444
+        },
+        {
+          "tag_id": 90,
+          "tag_name": "Ginástica Laboral",
+          "tag_name_normalized": "ginastica laboral",
+          "foco_flag": "Fora do Foco",
+          "hours": 1.25
+        },
+        {
+          "tag_id": 27,
+          "tag_name": "Removendo impedimentos",
+          "tag_name_normalized": "removendo impedimentos",
+          "foco_flag": "Dentro do Foco",
+          "hours": 1.1
+        },
+        {
+          "tag_id": 62,
+          "tag_name": "HoraLog",
+          "tag_name_normalized": "horalog",
+          "foco_flag": "Fora do Foco",
+          "hours": 1.0825
+        },
+        {
+          "tag_id": 88,
+          "tag_name": "Manutenção Equipamento",
+          "tag_name_normalized": "manutencao equipamento",
+          "foco_flag": "Fora do Foco",
+          "hours": 1.0
+        },
+        {
+          "tag_id": 51,
+          "tag_name": "Onboarding",
+          "tag_name_normalized": "onboarding",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 0.7927777777777778
+        },
+        {
+          "tag_id": 42,
+          "tag_name": "Checkin",
+          "tag_name_normalized": "checkin",
+          "foco_flag": "Fora do Foco",
+          "hours": 0.5
+        },
+        {
+          "tag_id": 23,
+          "tag_name": "Gestão de entregas",
+          "tag_name_normalized": "gestao de entregas",
+          "foco_flag": "Dentro do Foco",
+          "hours": 0.5
+        },
+        {
+          "tag_id": 60,
+          "tag_name": "Post mortem",
+          "tag_name_normalized": "post mortem",
+          "foco_flag": "Fora do Foco",
+          "hours": 0.5
+        },
+        {
+          "tag_id": 86,
+          "tag_name": "Implantação",
+          "tag_name_normalized": "implantacao",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 0.4622222222222222
+        },
+        {
+          "tag_id": 57,
+          "tag_name": "Atualização de Kubernetes",
+          "tag_name_normalized": "atualizacao de kubernetes",
+          "foco_flag": "Fora do Foco",
+          "hours": 0.38333333333333336
+        },
+        {
+          "tag_id": 96,
+          "tag_name": "INFRA",
+          "tag_name_normalized": "infra",
+          "foco_flag": "Fora do Foco",
+          "hours": 0.38333333333333336
+        },
+        {
+          "tag_id": 83,
+          "tag_name": "Força tarefa",
+          "tag_name_normalized": "forca tarefa",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 0.37805555555555553
+        },
+        {
+          "tag_id": 64,
+          "tag_name": "Gestão de atividades",
+          "tag_name_normalized": "gestao de atividades",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 0.37805555555555553
+        },
+        {
+          "tag_id": 39,
+          "tag_name": "Suporte ao cliente",
+          "tag_name_normalized": "suporte ao cliente",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 0.37805555555555553
+        },
+        {
+          "tag_id": 101,
+          "tag_name": "Contorno",
+          "tag_name_normalized": "contorno",
+          "foco_flag": "Fora do Foco",
+          "hours": 0.35
+        },
+        {
+          "tag_id": 85,
+          "tag_name": "Criação de ticket",
+          "tag_name_normalized": "criacao de ticket",
+          "foco_flag": "Fora do Foco",
+          "hours": 0.3425
+        },
+        {
+          "tag_id": 91,
+          "tag_name": "Indisponibilidade",
+          "tag_name_normalized": "indisponibilidade",
+          "foco_flag": "Fora do Foco",
+          "hours": 0.31666666666666665
+        }
+      ],
+      "hours_by_tag_top": [
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "tag_name_normalized": "dev",
+          "foco_flag": "Dentro do Foco",
+          "hours": 5509.989444444444
+        },
+        {
+          "tag_id": 36,
+          "tag_name": "Daily",
+          "tag_name_normalized": "daily",
+          "foco_flag": "Fora do Foco",
+          "hours": 1316.7919444444444
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "tag_name_normalized": "analise e levantamento de requisitos",
+          "foco_flag": "Dentro do Foco",
+          "hours": 1038.1105555555555
+        },
+        {
+          "tag_id": 47,
+          "tag_name": "Plantão",
+          "tag_name_normalized": "plantao",
+          "foco_flag": "Fora do Foco",
+          "hours": 988.7466666666667
+        },
+        {
+          "tag_id": 19,
+          "tag_name": "Reunião Interna",
+          "tag_name_normalized": "reuniao interna",
+          "foco_flag": "Fora do Foco",
+          "hours": 829.4286111111111
+        },
+        {
+          "tag_id": 34,
+          "tag_name": "Ações internas",
+          "tag_name_normalized": "acoes internas",
+          "foco_flag": "Fora do Foco",
+          "hours": 807.9344444444445
+        },
+        {
+          "tag_id": 4,
+          "tag_name": "Monitoramento",
+          "tag_name_normalized": "monitoramento",
+          "foco_flag": "Fora do Foco",
+          "hours": 774.8991666666667
+        },
+        {
+          "tag_id": 44,
+          "tag_name": "Alinhamento interno",
+          "tag_name_normalized": "alinhamento interno",
+          "foco_flag": "Fora do Foco",
+          "hours": 606.4469444444444
+        },
+        {
+          "tag_id": 40,
+          "tag_name": "Suporte interno",
+          "tag_name_normalized": "suporte interno",
+          "foco_flag": "Fora do Foco",
+          "hours": 575.7816666666666
+        },
+        {
+          "tag_id": 37,
+          "tag_name": "Comunicações",
+          "tag_name_normalized": "comunicacoes",
+          "foco_flag": "Fora do Foco",
+          "hours": 566.1997222222222
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "tag_name_normalized": "qa",
+          "foco_flag": "Dentro do Foco",
+          "hours": 546.9572222222222
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "tag_name_normalized": "dev-check",
+          "foco_flag": "Dentro do Foco",
+          "hours": 413.3286111111111
+        },
+        {
+          "tag_id": 43,
+          "tag_name": "Movidesk",
+          "tag_name_normalized": "movidesk",
+          "foco_flag": "Fora do Foco",
+          "hours": 373.06111111111113
+        },
+        {
+          "tag_id": 17,
+          "tag_name": "UI/UX Design",
+          "tag_name_normalized": "ui/ux design",
+          "foco_flag": "Dentro do Foco",
+          "hours": 366.7263888888889
+        },
+        {
+          "tag_id": 43,
+          "tag_name": "Movidesk",
+          "tag_name_normalized": "movidesk",
+          "foco_flag": "Sem Papel Definido",
+          "hours": 354.5597222222222
+        }
+      ],
+      "hours_by_sprint": [
+        {
+          "sprint_id": 7802,
+          "sprint_name": "Nucleo Analytics - Sprint 19",
+          "sprint_start": "2026-04-02 16:50:04-03:00",
+          "sprint_end": "2026-04-16 16:50:11-03:00",
+          "assignment_status": "atribuido",
+          "hours": 94.67361111111111
+        },
+        {
+          "sprint_id": 7868,
+          "sprint_name": "PrevOps - Sprint 6",
+          "sprint_start": "2026-04-23 08:14:36.594000-03:00",
+          "sprint_end": "2026-05-07 00:00:00-03:00",
+          "assignment_status": "atribuido",
+          "hours": 99.37666666666667
+        },
+        {
+          "sprint_id": 8680,
+          "sprint_name": "ZGT-2026.T2.03",
+          "sprint_start": "2026-04-27 15:35:31.847000-03:00",
+          "sprint_end": "2026-05-11 15:00:00-03:00",
+          "assignment_status": "atribuido",
+          "hours": 202.1786111111111
+        },
+        {
+          "sprint_id": 8911,
+          "sprint_name": "ZGT-2026.T2.04",
+          "sprint_start": "2026-05-11 11:25:24-03:00",
+          "sprint_end": "2026-05-25 10:00:00-03:00",
+          "assignment_status": "atribuido",
+          "hours": 205.6313888888889
+        },
+        {
+          "sprint_id": 8443,
+          "sprint_name": "Operadoras Sprint 23",
+          "sprint_start": "2026-05-11 14:15:17.865000-03:00",
+          "sprint_end": "2026-05-25 12:00:00-03:00",
+          "assignment_status": "atribuido",
+          "hours": 163.7913888888889
+        },
+        {
+          "sprint_id": 9183,
+          "sprint_name": "ZGT-2026.T2.05",
+          "sprint_start": "2026-05-25 11:10:08-03:00",
+          "sprint_end": "2026-06-08 00:00:00-03:00",
+          "assignment_status": "atribuido",
+          "hours": 157.47055555555556
+        },
+        {
+          "sprint_id": 8746,
+          "sprint_name": "Operadoras Sprint 24",
+          "sprint_start": "2026-05-25 12:46:00.726000-03:00",
+          "sprint_end": "2026-06-08 12:00:00-03:00",
+          "assignment_status": "atribuido",
+          "hours": 183.78833333333333
+        },
+        {
+          "sprint_id": 9235,
+          "sprint_name": "ZGT-2026.T2.06",
+          "sprint_start": "2026-06-08 17:33:08-03:00",
+          "sprint_end": "2026-06-22 17:33:58-03:00",
+          "assignment_status": "atribuido",
+          "hours": 163.93527777777777
+        },
+        {
+          "sprint_id": 9287,
+          "sprint_name": "ZGT-2026.T2.07",
+          "sprint_start": "2026-06-22 11:16:18-03:00",
+          "sprint_end": "2026-07-06 00:00:00-03:00",
+          "assignment_status": "atribuido",
+          "hours": 186.16027777777776
+        },
+        {
+          "sprint_id": 9237,
+          "sprint_name": "ZGT Sustentação Sprint 4",
+          "sprint_start": "2026-06-22 19:01:32.687000-03:00",
+          "sprint_end": "2026-07-06 19:01:03-03:00",
+          "assignment_status": "atribuido",
+          "hours": 72.21583333333334
+        },
+        {
+          "sprint_id": 9239,
+          "sprint_name": "Operadoras Sprint 26",
+          "sprint_start": "2026-06-30 08:23:07.960000-03:00",
+          "sprint_end": "2026-07-14 00:00:00-03:00",
+          "assignment_status": "atribuido",
+          "hours": 130.57916666666668
+        },
+        {
+          "sprint_id": 9308,
+          "sprint_name": "ZGT-2026.T3.01",
+          "sprint_start": "2026-07-06 14:45:51-03:00",
+          "sprint_end": "2026-07-20 06:31:45-03:00",
+          "assignment_status": "atribuido",
+          "hours": 147.4488888888889
+        },
+        {
+          "sprint_id": 9290,
+          "sprint_name": "ZGT Sustentação Sprint 5",
+          "sprint_start": "2026-07-07 00:00:00-03:00",
+          "sprint_end": "2026-07-21 00:00:00-03:00",
+          "assignment_status": "atribuido",
+          "hours": 73.94611111111111
+        },
+        {
+          "sprint_id": 9244,
+          "sprint_name": "Nucleo Analytics - Sprint 26",
+          "sprint_start": "2026-07-13 07:50:42.239000-03:00",
+          "sprint_end": "2026-07-26 22:41:39-03:00",
+          "assignment_status": "atribuido",
+          "hours": 94.12944444444445
+        }
+      ],
+      "hours_by_tag_sprint": [
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 7802,
+          "sprint_name": "Nucleo Analytics - Sprint 19",
+          "foco_flag": "Sem Papel Definido",
+          "assignment_status": "atribuido",
+          "hours": 1.3333333333333333
+        },
+        {
+          "tag_id": 73,
+          "tag_name": "Correções DevCheck",
+          "sprint_id": 7802,
+          "sprint_name": "Nucleo Analytics - Sprint 19",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.5511111111111111
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 7802,
+          "sprint_name": "Nucleo Analytics - Sprint 19",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 67.20944444444444
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 7802,
+          "sprint_name": "Nucleo Analytics - Sprint 19",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 2.540277777777778
+        },
+        {
+          "tag_id": 61,
+          "tag_name": "Melhoria",
+          "sprint_id": 7802,
+          "sprint_name": "Nucleo Analytics - Sprint 19",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 7.01
+        },
+        {
+          "tag_id": 41,
+          "tag_name": "Merge",
+          "sprint_id": 7802,
+          "sprint_name": "Nucleo Analytics - Sprint 19",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 3.8016666666666667
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 7802,
+          "sprint_name": "Nucleo Analytics - Sprint 19",
+          "foco_flag": "Sem Papel Definido",
+          "assignment_status": "atribuido",
+          "hours": 5.6525
+        },
+        {
+          "tag_id": 79,
+          "tag_name": "QA em Produção",
+          "sprint_id": 7802,
+          "sprint_name": "Nucleo Analytics - Sprint 19",
+          "foco_flag": "Sem Papel Definido",
+          "assignment_status": "atribuido",
+          "hours": 1.7458333333333333
+        },
+        {
+          "tag_id": 44,
+          "tag_name": "Alinhamento interno",
+          "sprint_id": 7868,
+          "sprint_name": "PrevOps - Sprint 6",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.7833333333333333
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 7868,
+          "sprint_name": "PrevOps - Sprint 6",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 72.88305555555556
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 7868,
+          "sprint_name": "PrevOps - Sprint 6",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 6.497777777777777
+        },
+        {
+          "tag_id": 41,
+          "tag_name": "Merge",
+          "sprint_id": 7868,
+          "sprint_name": "PrevOps - Sprint 6",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.8861111111111111
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 7868,
+          "sprint_name": "PrevOps - Sprint 6",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.8333333333333333
+        },
+        {
+          "tag_id": 40,
+          "tag_name": "Suporte interno",
+          "sprint_id": 7868,
+          "sprint_name": "PrevOps - Sprint 6",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.7755555555555556
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 8680,
+          "sprint_name": "ZGT-2026.T2.03",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 3.111666666666667
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 8680,
+          "sprint_name": "ZGT-2026.T2.03",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 86.68333333333334
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 8680,
+          "sprint_name": "ZGT-2026.T2.03",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.0
+        },
+        {
+          "tag_id": 61,
+          "tag_name": "Melhoria",
+          "sprint_id": 8680,
+          "sprint_name": "ZGT-2026.T2.03",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.005277777777777778
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 8680,
+          "sprint_name": "ZGT-2026.T2.03",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 14.7625
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 8680,
+          "sprint_name": "ZGT-2026.T2.03",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 4.0
+        },
+        {
+          "tag_id": 19,
+          "tag_name": "Reunião Interna",
+          "sprint_id": 8680,
+          "sprint_name": "ZGT-2026.T2.03",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 2.3316666666666666
+        },
+        {
+          "tag_id": 66,
+          "tag_name": "Subtarefa-DevCheck",
+          "sprint_id": 8680,
+          "sprint_name": "ZGT-2026.T2.03",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.0
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 8911,
+          "sprint_name": "ZGT-2026.T2.04",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.1166666666666667
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 8911,
+          "sprint_name": "ZGT-2026.T2.04",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 44.37138888888889
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 8911,
+          "sprint_name": "ZGT-2026.T2.04",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 7.7058333333333335
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 8911,
+          "sprint_name": "ZGT-2026.T2.04",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 51.5
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 8911,
+          "sprint_name": "ZGT-2026.T2.04",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 11.318333333333333
+        },
+        {
+          "tag_id": 44,
+          "tag_name": "Alinhamento interno",
+          "sprint_id": 8443,
+          "sprint_name": "Operadoras Sprint 23",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.36027777777777775
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 8443,
+          "sprint_name": "Operadoras Sprint 23",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 5.649166666666667
+        },
+        {
+          "tag_id": 37,
+          "tag_name": "Comunicações",
+          "sprint_id": 8443,
+          "sprint_name": "Operadoras Sprint 23",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 11.114444444444445
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 8443,
+          "sprint_name": "Operadoras Sprint 23",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 118.8561111111111
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 8443,
+          "sprint_name": "Operadoras Sprint 23",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 14.101944444444445
+        },
+        {
+          "tag_id": 41,
+          "tag_name": "Merge",
+          "sprint_id": 8443,
+          "sprint_name": "Operadoras Sprint 23",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 6.2225
+        },
+        {
+          "tag_id": 43,
+          "tag_name": "Movidesk",
+          "sprint_id": 8443,
+          "sprint_name": "Operadoras Sprint 23",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 5.166666666666667
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 8443,
+          "sprint_name": "Operadoras Sprint 23",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 9.975277777777778
+        },
+        {
+          "tag_id": 19,
+          "tag_name": "Reunião Interna",
+          "sprint_id": 8443,
+          "sprint_name": "Operadoras Sprint 23",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.5333333333333334
+        },
+        {
+          "tag_id": 40,
+          "tag_name": "Suporte interno",
+          "sprint_id": 8443,
+          "sprint_name": "Operadoras Sprint 23",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 3.2280555555555557
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 9183,
+          "sprint_name": "ZGT-2026.T2.05",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.0
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 9183,
+          "sprint_name": "ZGT-2026.T2.05",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 50.157222222222224
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 9183,
+          "sprint_name": "ZGT-2026.T2.05",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.9413888888888889
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 9183,
+          "sprint_name": "ZGT-2026.T2.05",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 6.032222222222222
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 9183,
+          "sprint_name": "ZGT-2026.T2.05",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.8461111111111111
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 8746,
+          "sprint_name": "Operadoras Sprint 24",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.7977777777777777
+        },
+        {
+          "tag_id": 37,
+          "tag_name": "Comunicações",
+          "sprint_id": 8746,
+          "sprint_name": "Operadoras Sprint 24",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 5.205277777777778
+        },
+        {
+          "tag_id": 50,
+          "tag_name": "Deploy",
+          "sprint_id": 8746,
+          "sprint_name": "Operadoras Sprint 24",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.8522222222222222
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 8746,
+          "sprint_name": "Operadoras Sprint 24",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 152.60694444444445
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 8746,
+          "sprint_name": "Operadoras Sprint 24",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 15.334722222222222
+        },
+        {
+          "tag_id": 41,
+          "tag_name": "Merge",
+          "sprint_id": 8746,
+          "sprint_name": "Operadoras Sprint 24",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 6.1
+        },
+        {
+          "tag_id": 43,
+          "tag_name": "Movidesk",
+          "sprint_id": 8746,
+          "sprint_name": "Operadoras Sprint 24",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.5833333333333334
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 8746,
+          "sprint_name": "Operadoras Sprint 24",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 7.919722222222222
+        },
+        {
+          "tag_id": 40,
+          "tag_name": "Suporte interno",
+          "sprint_id": 8746,
+          "sprint_name": "Operadoras Sprint 24",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.5625
+        },
+        {
+          "tag_id": 18,
+          "tag_name": "Validação de Solução",
+          "sprint_id": 8746,
+          "sprint_name": "Operadoras Sprint 24",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 2.1494444444444443
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 9235,
+          "sprint_name": "ZGT-2026.T2.06",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.1833333333333333
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 9235,
+          "sprint_name": "ZGT-2026.T2.06",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 61.36277777777778
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 9235,
+          "sprint_name": "ZGT-2026.T2.06",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 12.674166666666666
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 9235,
+          "sprint_name": "ZGT-2026.T2.06",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 33.55583333333333
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 9235,
+          "sprint_name": "ZGT-2026.T2.06",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 15.932222222222222
+        },
+        {
+          "tag_id": 19,
+          "tag_name": "Reunião Interna",
+          "sprint_id": 9235,
+          "sprint_name": "ZGT-2026.T2.06",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.75
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 9287,
+          "sprint_name": "ZGT-2026.T2.07",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.8833333333333333
+        },
+        {
+          "tag_id": 49,
+          "tag_name": "Análise técnica - sustentação",
+          "sprint_id": 9287,
+          "sprint_name": "ZGT-2026.T2.07",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 2.5
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 9287,
+          "sprint_name": "ZGT-2026.T2.07",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 100.9275
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 9287,
+          "sprint_name": "ZGT-2026.T2.07",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 10.779722222222222
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 9287,
+          "sprint_name": "ZGT-2026.T2.07",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 8.583333333333334
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 9287,
+          "sprint_name": "ZGT-2026.T2.07",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 6.8197222222222225
+        },
+        {
+          "tag_id": 44,
+          "tag_name": "Alinhamento interno",
+          "sprint_id": 9237,
+          "sprint_name": "ZGT Sustentação Sprint 4",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.0
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 9237,
+          "sprint_name": "ZGT Sustentação Sprint 4",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.25
+        },
+        {
+          "tag_id": 49,
+          "tag_name": "Análise técnica - sustentação",
+          "sprint_id": 9237,
+          "sprint_name": "ZGT Sustentação Sprint 4",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 3.105
+        },
+        {
+          "tag_id": 35,
+          "tag_name": "Comitê",
+          "sprint_id": 9237,
+          "sprint_name": "ZGT Sustentação Sprint 4",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.75
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 9237,
+          "sprint_name": "ZGT Sustentação Sprint 4",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 41.20472222222222
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 9237,
+          "sprint_name": "ZGT Sustentação Sprint 4",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 4.943333333333333
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 9237,
+          "sprint_name": "ZGT Sustentação Sprint 4",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 9.302777777777777
+        },
+        {
+          "tag_id": 19,
+          "tag_name": "Reunião Interna",
+          "sprint_id": 9237,
+          "sprint_name": "ZGT Sustentação Sprint 4",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.5
+        },
+        {
+          "tag_id": 34,
+          "tag_name": "Ações internas",
+          "sprint_id": 9239,
+          "sprint_name": "Operadoras Sprint 26",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 4.384722222222222
+        },
+        {
+          "tag_id": 44,
+          "tag_name": "Alinhamento interno",
+          "sprint_id": 9239,
+          "sprint_name": "Operadoras Sprint 26",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.853888888888889
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 9239,
+          "sprint_name": "Operadoras Sprint 26",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 2.3666666666666667
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 9239,
+          "sprint_name": "Operadoras Sprint 26",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 105.3825
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 9239,
+          "sprint_name": "Operadoras Sprint 26",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 9.641944444444444
+        },
+        {
+          "tag_id": 41,
+          "tag_name": "Merge",
+          "sprint_id": 9239,
+          "sprint_name": "Operadoras Sprint 26",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.9427777777777777
+        },
+        {
+          "tag_id": 43,
+          "tag_name": "Movidesk",
+          "sprint_id": 9239,
+          "sprint_name": "Operadoras Sprint 26",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 3.0833333333333335
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 9239,
+          "sprint_name": "Operadoras Sprint 26",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.8333333333333333
+        },
+        {
+          "tag_id": 5,
+          "tag_name": "Análise de viabilidade",
+          "sprint_id": 9308,
+          "sprint_name": "ZGT-2026.T3.01",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 2.7666666666666666
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 9308,
+          "sprint_name": "ZGT-2026.T3.01",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 14.0
+        },
+        {
+          "tag_id": 53,
+          "tag_name": "Análise técnica - evolução",
+          "sprint_id": 9308,
+          "sprint_name": "ZGT-2026.T3.01",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 4.033611111111111
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 9308,
+          "sprint_name": "ZGT-2026.T3.01",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 50.66444444444444
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 9308,
+          "sprint_name": "ZGT-2026.T3.01",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 16.039444444444445
+        },
+        {
+          "tag_id": 3,
+          "tag_name": "Documentação",
+          "sprint_id": 9308,
+          "sprint_name": "ZGT-2026.T3.01",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 7.5
+        },
+        {
+          "tag_id": 41,
+          "tag_name": "Merge",
+          "sprint_id": 9308,
+          "sprint_name": "ZGT-2026.T3.01",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.0
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 9308,
+          "sprint_name": "ZGT-2026.T3.01",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 16.25138888888889
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 9308,
+          "sprint_name": "ZGT-2026.T3.01",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 19.147777777777776
+        },
+        {
+          "tag_id": 19,
+          "tag_name": "Reunião Interna",
+          "sprint_id": 9308,
+          "sprint_name": "ZGT-2026.T3.01",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.5833333333333333
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 9290,
+          "sprint_name": "ZGT Sustentação Sprint 5",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 2.783333333333333
+        },
+        {
+          "tag_id": 49,
+          "tag_name": "Análise técnica - sustentação",
+          "sprint_id": 9290,
+          "sprint_name": "ZGT Sustentação Sprint 5",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 2.055
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 9290,
+          "sprint_name": "ZGT Sustentação Sprint 5",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 42.17888888888889
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 9290,
+          "sprint_name": "ZGT Sustentação Sprint 5",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 6.684444444444445
+        },
+        {
+          "tag_id": 41,
+          "tag_name": "Merge",
+          "sprint_id": 9290,
+          "sprint_name": "ZGT Sustentação Sprint 5",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.2816666666666667
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 9290,
+          "sprint_name": "ZGT Sustentação Sprint 5",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.5511111111111111
+        },
+        {
+          "tag_id": 1,
+          "tag_name": "Análise e levantamento de requisitos",
+          "sprint_id": 9244,
+          "sprint_name": "Nucleo Analytics - Sprint 26",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.5
+        },
+        {
+          "tag_id": 50,
+          "tag_name": "Deploy",
+          "sprint_id": 9244,
+          "sprint_name": "Nucleo Analytics - Sprint 26",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.6166666666666667
+        },
+        {
+          "tag_id": 8,
+          "tag_name": "Dev",
+          "sprint_id": 9244,
+          "sprint_name": "Nucleo Analytics - Sprint 26",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 76.13361111111111
+        },
+        {
+          "tag_id": 9,
+          "tag_name": "Dev-check",
+          "sprint_id": 9244,
+          "sprint_name": "Nucleo Analytics - Sprint 26",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 4.446111111111111
+        },
+        {
+          "tag_id": 41,
+          "tag_name": "Merge",
+          "sprint_id": 9244,
+          "sprint_name": "Nucleo Analytics - Sprint 26",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 0.6147222222222222
+        },
+        {
+          "tag_id": 6,
+          "tag_name": "QA",
+          "sprint_id": 9244,
+          "sprint_name": "Nucleo Analytics - Sprint 26",
+          "foco_flag": "Dentro do Foco",
+          "assignment_status": "atribuido",
+          "hours": 1.3683333333333334
+        },
+        {
+          "tag_id": 18,
+          "tag_name": "Validação de Solução",
+          "sprint_id": 9244,
+          "sprint_name": "Nucleo Analytics - Sprint 26",
+          "foco_flag": "Fora do Foco",
+          "assignment_status": "atribuido",
+          "hours": 3.45
+        }
+      ],
+      "tickets_by_sprint": [
+        {
+          "sprint_id": 7802,
+          "sprint_name": "Nucleo Analytics - Sprint 19",
+          "sprint_start": "2026-04-02 16:50:04-03:00",
+          "sprint_end": "2026-04-16 16:50:11-03:00",
+          "tickets_total": 38,
+          "tickets_concluidos": 34,
+          "tickets_planejados_inicio": 27,
+          "tickets_planejados_concluidos": 23,
+          "eficiencia_sprint": 0.8518518518518519
+        },
+        {
+          "sprint_id": 7868,
+          "sprint_name": "PrevOps - Sprint 6",
+          "sprint_start": "2026-04-23 08:14:36.594000-03:00",
+          "sprint_end": "2026-05-07 00:00:00-03:00",
+          "tickets_total": 58,
+          "tickets_concluidos": 53,
+          "tickets_planejados_inicio": 30,
+          "tickets_planejados_concluidos": 27,
+          "eficiencia_sprint": 0.9
+        },
+        {
+          "sprint_id": 8680,
+          "sprint_name": "ZGT-2026.T2.03",
+          "sprint_start": "2026-04-27 15:35:31.847000-03:00",
+          "sprint_end": "2026-05-11 15:00:00-03:00",
+          "tickets_total": 102,
+          "tickets_concluidos": 101,
+          "tickets_planejados_inicio": 21,
+          "tickets_planejados_concluidos": 21,
+          "eficiencia_sprint": 1.0
+        },
+        {
+          "sprint_id": 8911,
+          "sprint_name": "ZGT-2026.T2.04",
+          "sprint_start": "2026-05-11 11:25:24-03:00",
+          "sprint_end": "2026-05-25 10:00:00-03:00",
+          "tickets_total": 94,
+          "tickets_concluidos": 91,
+          "tickets_planejados_inicio": 24,
+          "tickets_planejados_concluidos": 23,
+          "eficiencia_sprint": 0.9583333333333334
+        },
+        {
+          "sprint_id": 8443,
+          "sprint_name": "Operadoras Sprint 23",
+          "sprint_start": "2026-05-11 14:15:17.865000-03:00",
+          "sprint_end": "2026-05-25 12:00:00-03:00",
+          "tickets_total": 47,
+          "tickets_concluidos": 44,
+          "tickets_planejados_inicio": 26,
+          "tickets_planejados_concluidos": 25,
+          "eficiencia_sprint": 0.9615384615384616
+        },
+        {
+          "sprint_id": 9183,
+          "sprint_name": "ZGT-2026.T2.05",
+          "sprint_start": "2026-05-25 11:10:08-03:00",
+          "sprint_end": "2026-06-08 00:00:00-03:00",
+          "tickets_total": 104,
+          "tickets_concluidos": 98,
+          "tickets_planejados_inicio": 29,
+          "tickets_planejados_concluidos": 27,
+          "eficiencia_sprint": 0.9310344827586207
+        },
+        {
+          "sprint_id": 8746,
+          "sprint_name": "Operadoras Sprint 24",
+          "sprint_start": "2026-05-25 12:46:00.726000-03:00",
+          "sprint_end": "2026-06-08 12:00:00-03:00",
+          "tickets_total": 49,
+          "tickets_concluidos": 44,
+          "tickets_planejados_inicio": 34,
+          "tickets_planejados_concluidos": 29,
+          "eficiencia_sprint": 0.8529411764705882
+        },
+        {
+          "sprint_id": 9235,
+          "sprint_name": "ZGT-2026.T2.06",
+          "sprint_start": "2026-06-08 17:33:08-03:00",
+          "sprint_end": "2026-06-22 17:33:58-03:00",
+          "tickets_total": 82,
+          "tickets_concluidos": 72,
+          "tickets_planejados_inicio": 33,
+          "tickets_planejados_concluidos": 26,
+          "eficiencia_sprint": 0.7878787878787878
+        },
+        {
+          "sprint_id": 9287,
+          "sprint_name": "ZGT-2026.T2.07",
+          "sprint_start": "2026-06-22 11:16:18-03:00",
+          "sprint_end": "2026-07-06 00:00:00-03:00",
+          "tickets_total": 110,
+          "tickets_concluidos": 94,
+          "tickets_planejados_inicio": 40,
+          "tickets_planejados_concluidos": 30,
+          "eficiencia_sprint": 0.75
+        },
+        {
+          "sprint_id": 9237,
+          "sprint_name": "ZGT Sustentação Sprint 4",
+          "sprint_start": "2026-06-22 19:01:32.687000-03:00",
+          "sprint_end": "2026-07-06 19:01:03-03:00",
+          "tickets_total": 30,
+          "tickets_concluidos": 24,
+          "tickets_planejados_inicio": 13,
+          "tickets_planejados_concluidos": 9,
+          "eficiencia_sprint": 0.6923076923076923
+        },
+        {
+          "sprint_id": 9239,
+          "sprint_name": "Operadoras Sprint 26",
+          "sprint_start": "2026-06-30 08:23:07.960000-03:00",
+          "sprint_end": "2026-07-14 00:00:00-03:00",
+          "tickets_total": 53,
+          "tickets_concluidos": 41,
+          "tickets_planejados_inicio": 25,
+          "tickets_planejados_concluidos": 19,
+          "eficiencia_sprint": 0.76
+        },
+        {
+          "sprint_id": 9308,
+          "sprint_name": "ZGT-2026.T3.01",
+          "sprint_start": "2026-07-06 14:45:51-03:00",
+          "sprint_end": "2026-07-20 06:31:45-03:00",
+          "tickets_total": 80,
+          "tickets_concluidos": 56,
+          "tickets_planejados_inicio": 36,
+          "tickets_planejados_concluidos": 22,
+          "eficiencia_sprint": 0.6111111111111112
+        },
+        {
+          "sprint_id": 9290,
+          "sprint_name": "ZGT Sustentação Sprint 5",
+          "sprint_start": "2026-07-07 00:00:00-03:00",
+          "sprint_end": "2026-07-21 00:00:00-03:00",
+          "tickets_total": 32,
+          "tickets_concluidos": 15,
+          "tickets_planejados_inicio": 15,
+          "tickets_planejados_concluidos": 8,
+          "eficiencia_sprint": 0.5333333333333333
+        },
+        {
+          "sprint_id": 9298,
+          "sprint_name": "Monitoramento SRE - Sprint 8",
+          "sprint_start": "2026-07-07 11:13:33.027000-03:00",
+          "sprint_end": "2026-07-14 00:00:00-03:00",
+          "tickets_total": 26,
+          "tickets_concluidos": 13,
+          "tickets_planejados_inicio": 11,
+          "tickets_planejados_concluidos": 3,
+          "eficiencia_sprint": 0.2727272727272727
+        },
+        {
+          "sprint_id": 9244,
+          "sprint_name": "Nucleo Analytics - Sprint 26",
+          "sprint_start": "2026-07-13 07:50:42.239000-03:00",
+          "sprint_end": "2026-07-26 22:41:39-03:00",
+          "tickets_total": 48,
+          "tickets_concluidos": 21,
+          "tickets_planejados_inicio": 23,
+          "tickets_planejados_concluidos": 11,
+          "eficiencia_sprint": 0.4782608695652174
+        }
+      ]
+    },
+    "accessIssues": []
+  },
+  "sources": [
+    {
+      "id": "clockify_kpi_source",
+      "label": "KPIs Clockify — fato e tags",
+      "path": "queries/metrics.py",
+      "query": {
+        "engine": "PostgreSQL",
+        "language": "Python/SQLAlchemy",
+        "id": "clockify_kpi_source",
+        "sql": "SELECT * FROM vw_clockify_entry_detail; SELECT * FROM vw_clockify_entry_tag_detail;",
+        "description": "Soma de duração no grão de lançamento e cálculos derivados da relação lançamento-tag.",
+        "executed_at": "2026-07-18T00:06:44.043160+00:00",
+        "tables_used": [
+          "vw_clockify_entry_detail",
+          "vw_clockify_entry_tag_detail"
+        ],
+        "metric_definitions": [
+          "Horas totais = soma de duration_seconds / 3600 na fato de lançamentos.",
+          "Horas Engenharia = tags Análise e Levantamento de Requisitos, QA, Dev e Dev-Check.",
+          "% Apoio à Entrega = (QA + Dev-Check) / Horas Engenharia.",
+          "% Horas Foco = Dentro do Foco / (Dentro do Foco + Fora do Foco)."
+        ]
+      }
+    },
+    {
+      "id": "clockify_entry_source",
+      "label": "Horas Clockify no grão de lançamento",
+      "path": "queries/metrics.py",
+      "query": {
+        "engine": "PostgreSQL",
+        "language": "Python/SQLAlchemy",
+        "id": "clockify_entry_source",
+        "sql": "SELECT * FROM vw_clockify_entry_detail;",
+        "description": "Fonte para total sem duplicação e horas por squad do colaborador.",
+        "executed_at": "2026-07-18T00:06:44.043160+00:00",
+        "tables_used": [
+          "vw_clockify_entry_detail"
+        ],
+        "metric_definitions": [
+          "Cada linha representa um lançamento Clockify."
+        ]
+      }
+    },
+    {
+      "id": "clockify_tag_source",
+      "label": "Horas Clockify por tag",
+      "path": "queries/metrics.py",
+      "query": {
+        "engine": "PostgreSQL",
+        "language": "Python/SQLAlchemy",
+        "id": "clockify_tag_source",
+        "sql": "SELECT * FROM vw_clockify_entry_tag_detail;",
+        "description": "Fonte para a relação lançamento-tag e o detalhamento de foco.",
+        "executed_at": "2026-07-18T00:06:44.043160+00:00",
+        "tables_used": [
+          "vw_clockify_entry_tag_detail"
+        ],
+        "metric_definitions": [
+          "Lançamentos com múltiplas tags contam integralmente em cada tag."
+        ]
+      }
+    },
+    {
+      "id": "clockify_sprint_source",
+      "label": "Horas Clockify por sprint",
+      "path": "queries/metrics.py",
+      "query": {
+        "engine": "PostgreSQL",
+        "language": "Python/SQLAlchemy",
+        "id": "clockify_sprint_source",
+        "sql": "SELECT * FROM vw_clockify_entry_sprint_detail;",
+        "description": "Fonte para atribuições de sprint e cruzamento tag × sprint.",
+        "executed_at": "2026-07-18T00:06:44.043160+00:00",
+        "tables_used": [
+          "vw_clockify_entry_sprint_detail"
+        ],
+        "metric_definitions": [
+          "O snapshot considera atribuições com status atribuído por padrão."
+        ]
+      }
+    },
+    {
+      "id": "jira_sprint_source",
+      "label": "Execução Jira por sprint",
+      "path": "queries/metrics.py",
+      "query": {
+        "engine": "PostgreSQL",
+        "language": "Python/SQLAlchemy",
+        "id": "jira_sprint_source",
+        "sql": "SELECT * FROM vw_jira_ticket_sprint_detail;",
+        "description": "Fonte para tickets concluídos, planejamento e eficiência das sprints.",
+        "executed_at": "2026-07-18T00:06:44.043160+00:00",
+        "tables_used": [
+          "vw_jira_ticket_sprint_detail"
+        ],
+        "metric_definitions": [
+          "Eficiência = tickets planejados concluídos / tickets planejados no início."
+        ]
+      }
+    }
+  ]
+}

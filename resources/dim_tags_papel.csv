@@ -1,0 +1,46 @@
+Papel,Foco,Tag clockify
+Analista de dados,"Análise: Examinar requisitos, entender problemas e propor melhorias.",Análise e levantamento de requisitos
+Analista de dados,Desenvolver/manutenção em paineis e relatorios,Criação de painéis
+Analista de dados,Documentação de regras e comportamentos do fluxo/telas,Documentação
+Analista de dados,Monitorar fluxos / serviços - analytics,Monitoramento
+Analista de requisitos,"Análise de viabilidade: Validação de sites, processos, arquivos, faturamento",Análise de viabilidade
+Analista de requisitos,"Análise: Examinar requisitos, entender problemas e propor melhorias.",Análise e levantamento de requisitos
+Analista de requisitos,"Documentação de requisitos, entrega e processos",Documentação
+Analista de requisitos,QA: Validação das entregas dos devs e avaliar a qualidade das correções,QA
+Analista de requisitos,"Divulgação das evoluções: Showcase, googlesites, comunicados internos",ShowCase
+Desenvolvedor,"Análise: Examinar requisitos, entender problemas e propor melhorias.",Analise e levantamento de requisitos
+Desenvolvedor,"Desenvolver: Implementar soluções, escrevendo e ajustando código",Dev
+Desenvolvedor,"Dev check: Verificar, testar e garantir que o código funcione corretamente.",Dev-check
+Monitoramento,Atuação em métricas de sucesso e desempenho,Definição e Gestão de SLIs e SLOs
+Monitoramento,Identificação e redução de tarefas repetitivas e manuais,Automação e redução de Toil
+Monitoramento,Planejamento e otimização de capacidade de sistemas e infraestrutura,Performance e Escalabilidade
+Monitoramento,"Ações em cenários de crise, condução e análise de causa raiz",Resposta a Incidentes
+Product Designer,Análise de dados,Acompanhamento de Métricas
+Product Designer,Pesquisas internas e externas,Descoberta
+Product Designer,"Documentação de fluxos, regras e comportamentos",Documentação
+Product Designer,Teste de preferência e usabilidade,Teste usabilidade
+Product Designer,"Desenho, prototipação e testes de interfaces",UI/UX Design
+Product Designer,Validação de fluxos/telas através de reuniões internas e externas,Validação de Solução
+Squad Leader,Reunião para alinhamento interno,Reunião Interna
+Squad Leader,Reunião de alinhamento com clientes,Reunião Externa
+Squad Leader,Organização das tarefas do Jira,Definição e Priorização de backlog
+Squad Leader,Planejamento e acompanhamento das sprints,Acompanhamento Sprint
+Squad Leader,Identificar riscos de não entrega e atuar proativamente,Gestão de entregas
+Squad Leader,"Reportar status de projetos, cenários e visbilidade da equipe",Visibilidade
+Tribe Leader,Estabelecer objetivos e as entregas principais dos projetos,Definição de projetos
+Tribe Leader,Acompanhar o andamento das tarefas ,Gestão de projetos
+Tribe Leader,Resolver impedimentos que possam afetar o time,Removendo impedimentos
+Tribe Leader,Manter todos os interessados informados sobre o status do projeto,Visibilidade
+Tribe Leader,"Gestão de carreira, PDI, e evolução individual",Gestão de pessoas
+Tribe Leader,Criação de indicadores de gestão ,Operacional
+Tribe Leader,Gestão de ponto e férias,Ponto e Férias
+Todos,"Auxílio em Dojos, dinâmicas ou entrevistas do Acelera",Acelera
+Todos,Apoio a outras squads,Apoio a outras equipes
+Todos,Participação na Avaliação de desempenho,Avaliação de Desempenho
+Todos,Participação em tarefas ou projetos da squad ou da gestão,Ações internas
+Todos ,Reuniões com propósito de executar alguma tarefa planejada,Comitê
+Todos,Dailys,Daily
+Todos,"Tempo gasto com e-mails, whatsapp, gchat e comunicação ",Comunicações
+Todos,Feedbacks e 1:1s,Feedbacks/1:1
+Todos,Suporte ao cliente em reuniões ou atividades de suporte,Suporte ao cliente
+Todos,Suporte aos colaboradores internos,Suporte interno

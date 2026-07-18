@@ -1,0 +1,322 @@
+{
+  "acceptance_version": 1,
+  "status": "accepted",
+  "started_at": "2026-07-18T01:04:17.880257+00:00",
+  "finished_at": "2026-07-18T01:04:18.090951+00:00",
+  "profile": {
+    "schema_version": 4,
+    "view_version": 3,
+    "row_counts": {
+      "dim_sprint": 16,
+      "dim_ticket_jira": 5312,
+      "fato_clockify_entry": 20299,
+      "bridge_clockify_entry_tag": 20404,
+      "bridge_clockify_entry_issue": 6304,
+      "bridge_clockify_entry_sprint": 20325,
+      "fato_jira_ticket_sprint": 1010,
+      "jira_sprint_changelog": 601
+    },
+    "view_counts": {
+      "vw_clockify_entry_detail": 20299,
+      "vw_clockify_entry_tag_detail": 20404,
+      "vw_clockify_entry_sprint_detail": 20325,
+      "vw_jira_ticket_sprint_detail": 1010
+    },
+    "clockify_date_range": {
+      "min": "2026-01-02",
+      "max": "2026-07-17"
+    },
+    "jira_updated_range": {
+      "min": "2026-01-05T06:41:55-03:00",
+      "max": "2026-07-17T18:51:15.998000-03:00"
+    },
+    "sprint_date_range": {
+      "min": "2026-04-02T16:50:04-03:00",
+      "max": "2026-07-13T07:50:42.239000-03:00"
+    },
+    "failed_changelog_rows": 0,
+    "planning_nulls": 0,
+    "unmapped_statuses": 0,
+    "entries_without_tags": 1619,
+    "entries_without_sprint_assignment": 0,
+    "ambiguous_sprint_links": 22,
+    "historical_changelog_relations_missing": 0
+  },
+  "metrics": {
+    "fact_total_hours": 21429.2875,
+    "metric_total_hours": 21429.2875,
+    "squad_total_hours": 21429.2875,
+    "assigned_sprint_hours": 1984.4755555555555,
+    "ticket_metrics": {
+      "tickets_total": 690,
+      "tickets_concluidos": 563,
+      "tickets_planejados_inicio": 426,
+      "tickets_planejados_concluidos": 321,
+      "eficiencia_sprint": 0.7535211267605634
+    }
+  },
+  "checks": [
+    {
+      "id": "schema_version",
+      "name": "Schema operacional da fase 4 aplicado",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 4,
+      "expected": ">= 4"
+    },
+    {
+      "id": "view_version",
+      "name": "Camada de views da fase 3 aplicada",
+      "status": "pass",
+      "severity": "high",
+      "observed": 3,
+      "expected": ">= 3"
+    },
+    {
+      "id": "rows_dim_sprint",
+      "name": "Tabela dim_sprint carregada",
+      "status": "pass",
+      "severity": "high",
+      "observed": 16,
+      "expected": "> 0"
+    },
+    {
+      "id": "rows_dim_ticket_jira",
+      "name": "Tabela dim_ticket_jira carregada",
+      "status": "pass",
+      "severity": "high",
+      "observed": 5312,
+      "expected": "> 0"
+    },
+    {
+      "id": "rows_fato_clockify_entry",
+      "name": "Tabela fato_clockify_entry carregada",
+      "status": "pass",
+      "severity": "high",
+      "observed": 20299,
+      "expected": "> 0"
+    },
+    {
+      "id": "rows_bridge_clockify_entry_tag",
+      "name": "Tabela bridge_clockify_entry_tag perfilada",
+      "status": "pass",
+      "severity": "info",
+      "observed": 20404,
+      "expected": ">= 0"
+    },
+    {
+      "id": "rows_bridge_clockify_entry_issue",
+      "name": "Tabela bridge_clockify_entry_issue perfilada",
+      "status": "pass",
+      "severity": "info",
+      "observed": 6304,
+      "expected": ">= 0"
+    },
+    {
+      "id": "rows_bridge_clockify_entry_sprint",
+      "name": "Tabela bridge_clockify_entry_sprint perfilada",
+      "status": "pass",
+      "severity": "info",
+      "observed": 20325,
+      "expected": ">= 0"
+    },
+    {
+      "id": "rows_fato_jira_ticket_sprint",
+      "name": "Tabela fato_jira_ticket_sprint perfilada",
+      "status": "pass",
+      "severity": "info",
+      "observed": 1010,
+      "expected": ">= 0"
+    },
+    {
+      "id": "rows_jira_sprint_changelog",
+      "name": "Tabela jira_sprint_changelog perfilada",
+      "status": "pass",
+      "severity": "info",
+      "observed": 601,
+      "expected": ">= 0"
+    },
+    {
+      "id": "orphan_clockify_tag_links",
+      "name": "Quality gate: orphan_clockify_tag_links",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "orphan_clockify_issue_links",
+      "name": "Quality gate: orphan_clockify_issue_links",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "orphan_clockify_sprint_links",
+      "name": "Quality gate: orphan_clockify_sprint_links",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "orphan_ticket_sprint_links",
+      "name": "Quality gate: orphan_ticket_sprint_links",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "orphan_changelog_links",
+      "name": "Quality gate: orphan_changelog_links",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "out_of_scope_sprints",
+      "name": "Quality gate: out_of_scope_sprints",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "negative_durations",
+      "name": "Quality gate: negative_durations",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "invalid_clockify_intervals",
+      "name": "Quality gate: invalid_clockify_intervals",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "invalid_sprint_assignment_status",
+      "name": "Quality gate: invalid_sprint_assignment_status",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "clockify_entry_view_grain",
+      "name": "View de lançamento mantém uma linha por entrada",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 20299,
+      "expected": 20299
+    },
+    {
+      "id": "clockify_tag_view_grain",
+      "name": "View de tags mantém uma linha por entrada × tag",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 20404,
+      "expected": 20404
+    },
+    {
+      "id": "clockify_sprint_view_grain",
+      "name": "View de sprint mantém uma linha por entrada × atribuição",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 20325,
+      "expected": 20325
+    },
+    {
+      "id": "jira_view_grain",
+      "name": "View Jira mantém uma linha por ticket × sprint",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 1010,
+      "expected": 1010
+    },
+    {
+      "id": "total_hours_reconciliation",
+      "name": "Total de horas da função coincide com a soma direta da fato",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 21429.2875,
+      "expected": 21429.2875
+    },
+    {
+      "id": "squad_hours_reconciliation",
+      "name": "Horas por squad recompõem o total sem duplicação",
+      "status": "pass",
+      "severity": "high",
+      "observed": 21429.2875,
+      "expected": 21429.2875
+    },
+    {
+      "id": "sprint_hours_bound",
+      "name": "Horas atribuídas a sprint não superam o total de lançamentos",
+      "status": "pass",
+      "severity": "high",
+      "observed": 1984.4755555555555,
+      "expected": "<= 21429.2875"
+    },
+    {
+      "id": "historical_sprint_coverage",
+      "name": "Todo relacionamento processado no changelog existe na fato histórica",
+      "status": "pass",
+      "severity": "high",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "changelog_failures",
+      "name": "Nenhum ticket permaneceu com falha no changelog",
+      "status": "pass",
+      "severity": "high",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "planning_nulls",
+      "name": "Relações ticket × sprint possuem resultado de planejamento",
+      "status": "pass",
+      "severity": "high",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "unmapped_statuses",
+      "name": "Status Jira estão classificados na dimensão de status",
+      "status": "pass",
+      "severity": "medium",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
+      "id": "entries_without_tags",
+      "name": "Lançamentos sem tag são identificados para aceite funcional",
+      "status": "pass",
+      "severity": "medium",
+      "observed": 1619,
+      "expected": "informativo"
+    },
+    {
+      "id": "ticket_efficiency_range",
+      "name": "Eficiência da sprint está entre 0% e 100%",
+      "status": "pass",
+      "severity": "high",
+      "observed": 0.7535211267605634,
+      "expected": "0 <= valor <= 1"
+    }
+  ],
+  "summary": {
+    "total_checks": 32,
+    "passed": 32,
+    "warnings": 0,
+    "failed": 0
+  }
+}
