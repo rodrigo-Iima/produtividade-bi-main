@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from config.settings import (
-    DATABASE_URL as RAILWAY_DATABASE_URL,
+    DATABASE_URL,
     DB_HOST,
     DB_NAME,
     DB_PASSWORD,
@@ -15,9 +15,9 @@ from config.settings import (
 
 
 def _resolve_database_url() -> str:
-    """Use Railway's DATABASE_URL or the local POSTGRES_* fallback."""
-    if RAILWAY_DATABASE_URL:
-        return RAILWAY_DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1).replace(
+    """Use a generic DATABASE_URL or the POSTGRES_* fallback."""
+    if DATABASE_URL:
+        return DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1).replace(
             "postgresql://", "postgresql+psycopg2://", 1
         )
 

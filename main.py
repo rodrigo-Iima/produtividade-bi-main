@@ -36,8 +36,9 @@ def main() -> int:
     try:
         return _run_pipeline()
     finally:
-        # Railway Cron Jobs must finish cleanly; dispose also closes idle and
-        # pooled PostgreSQL connections before the process exits.
+        # Always close idle and pooled PostgreSQL connections before the
+        # process exits, whether the ETL is run by cron, systemd, Docker, or
+        # an interactive shell.
         engine.dispose()
 
 

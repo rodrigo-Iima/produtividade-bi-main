@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-produtividade}
+      POSTGRES_USER: ${POSTGRES_USER:-produtividade}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD em deploy/ec2/.env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  metabase:
+    image: ${METABASE_IMAGE:-metabase/metabase:v0.62.0}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabasedb
+      MB_DB_PORT: 5432
+      MB_DB_USER: ${POSTGRES_USER:-produtividade}
+      MB_DB_PASS: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD em deploy/ec2/.env}
+      MB_DB_HOST: postgres
+      JAVA_TIMEZONE: ${JAVA_TIMEZONE:-America/Sao_Paulo}
+      JAVA_OPTS: "${JAVA_OPTS:--Xms256m -Xmx1280m}"
+      MB_LOAD_SAMPLE_CONTENT: "false"
+      MB_JETTY_HOST: 0.0.0.0
+      MB_JETTY_PORT: 3000
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:

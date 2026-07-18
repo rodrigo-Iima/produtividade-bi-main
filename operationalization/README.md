@@ -1,8 +1,8 @@
-# Fase 6 — Operacionalização local
+# Fase 6 — Operacionalização local e EC2
 
 Esta etapa fornece o mínimo necessário para executar e observar o ETL em uma
-máquina local. Ela não tenta reproduzir ainda a arquitetura futura de AWS,
-jobs distribuídos ou Kubernetes.
+máquina local ou em uma instância Ubuntu da AWS. A execução continua sendo um
+processo finito, adequado para cron, systemd timer ou um job containerizado.
 
 ## Comandos
 
@@ -26,26 +26,27 @@ Na raiz do projeto:
 ./.venv/bin/python -m operationalization acceptance
 ```
 
-O runner usa `.runtime/etl.lock` para impedir duas execuções locais
-simultâneas. Os resultados continuam registrados em `etl_run_log`, e o aceite
+O runner usa `.runtime/etl.lock` para impedir duas execuções simultâneas no
+mesmo host. Os resultados continuam registrados em `etl_run_log`, e o aceite
 pós-carga gera os relatórios em `validation/`.
 
-## Agendamento local temporário
+## Agendamento por cron
 
 Para um teste simples com `cron`, use o caminho absoluto do projeto e registre
 na saída do sistema operacional:
 
 ```cron
-0 7 * * 1-5 cd /caminho/do/projeto && ./.venv/bin/python -m operationalization run >> .runtime/etl.log 2>&1
+0 7 * * 1-5 cd /caminho/do/projeto && mkdir -p .runtime && ./.venv/bin/python -m operationalization run >> .runtime/etl.log 2>&1
 ```
 
-O agendamento deve ser substituído quando o job for transferido para a
-infraestrutura corporativa.
+Em uma EC2, o cron pode permanecer como agendador inicial. O arquivo
+`AWS_EC2_PUBLICACAO.md` apresenta a instalação, permissões e a configuração
+do ambiente.
 
 ## Evolução planejada
 
-- **AWS:** job containerizado, armazenamento de logs e métricas centralizado,
-  segredos e execução agendada;
+- **AWS:** RDS ou banco gerenciado, armazenamento de logs e métricas
+  centralizado, segredos e execução agendada;
 - **Kubernetes:** `Job`/`CronJob`, política de concorrência, retries do
   controlador e observabilidade do cluster;
 - **Banco:** retenção e particionamento de fatos conforme o volume crescer;

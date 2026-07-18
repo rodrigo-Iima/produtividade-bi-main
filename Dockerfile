@@ -11,5 +11,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Railway Cron Job: execute, validate and exit.
+# Execute one ETL run, validate the load, and exit.
 CMD ["python", "-m", "operationalization", "run"]

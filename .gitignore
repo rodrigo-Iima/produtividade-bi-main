@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+deploy/ec2/.env
 
 __pycache__/
 *.py[cod]

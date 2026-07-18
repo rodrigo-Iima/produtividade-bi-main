@@ -14,8 +14,9 @@ DEFAULT_LOCK_PATH = Path(os.getenv("ETL_RUNTIME_DIR", ".runtime")) / "etl.lock"
 class LocalRunLock:
     """Prevent overlapping local ETL executions.
 
-    This lock is intentionally local-only. In AWS/Kubernetes it should be
-    replaced by a scheduler-level concurrency policy or a distributed lock.
+    This lock is host-local and works for a single EC2 instance. If the ETL is
+    later distributed across workers or instances, replace it with a
+    scheduler-level concurrency policy or a distributed lock.
     """
 
     def __init__(self, path: Path = DEFAULT_LOCK_PATH):

@@ -106,14 +106,15 @@ agendamento por cron serão substituídos por política de concorrência,
 `CronJob`/jobs, observabilidade e armazenamento centralizado quando o projeto
 for levado para AWS/Kubernetes.
 
-### Publicação Railway — etapa 1
+### Publicação AWS EC2 — etapa 1
 
-O primeiro alvo de publicação é composto por PostgreSQL e ETL sem domínio
-público, comunicando-se pela rede privada do Railway, e Metabase como único
-serviço exposto pelo domínio `railway.app`. O ETL possui `Dockerfile`, aceita a
-variável `DATABASE_URL` do Railway e encerra o engine SQLAlchemy no final de
-cada execução. A topologia e as configurações esperadas estão em
-`RAILWAY_PUBLICACAO.md`.
+O alvo imediato de publicação é uma instância Ubuntu na AWS executando o
+PostgreSQL e o ETL localmente, com o Metabase em um container Docker. O
+PostgreSQL será limitado à própria instância e somente a porta HTTP do Metabase
+será exposta. O ETL aceita uma `DATABASE_URL` genérica ou as variáveis
+`POSTGRES_*`, encerra o engine SQLAlchemy ao final de cada execução e pode ser
+agendado por cron ou systemd timer. O procedimento está em
+`AWS_EC2_PUBLICACAO.md`.
 
 ## Status da migração
 

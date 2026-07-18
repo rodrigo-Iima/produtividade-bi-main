@@ -383,23 +383,25 @@ definitiva. Na migração, o lock local será substituído por controle de
 concorrência do scheduler/Kubernetes; retries, logs, métricas, alertas,
 retenção e armazenamento serão centralizados na arquitetura AWS.
 
-## 11. Publicação Railway — etapa 1
+## 11. Publicação AWS EC2 — etapa 1
 
-A preparação inicial para o Railway foi aplicada sem deploy externo. O ETL
-agora aceita a variável `DATABASE_URL` fornecida pelo Railway e mantém as
-variáveis `POSTGRES_*` para uso local. Foi criado um `Dockerfile` para executar
-o comando `python -m operationalization run` como Cron Job.
+A preparação inicial para a AWS foi recriada para uma instância Ubuntu na EC2.
+O ETL aceita a variável genérica `DATABASE_URL` e mantém as variáveis
+`POSTGRES_*` para execução local ou no host. O `Dockerfile` permanece genérico
+para execução containerizada, enquanto o baseline da EC2 executa o ETL em um
+ambiente virtual Python e o Metabase em Docker.
 
 A topologia definida para o teste é:
 
-- PostgreSQL Railway sem domínio público;
-- ETL Python como Cron Job sem domínio público;
-- Metabase como único serviço com domínio público `railway.app`;
-- conexão PostgreSQL privada entre os serviços;
+- PostgreSQL em container local, com porta publicada somente em `127.0.0.1`;
+- ETL Python executado por cron ou systemd timer na EC2;
+- Metabase em container Docker, com a porta `3000` como único acesso público;
+- banco lógico `metabasedb` separado para os metadados do Metabase;
 - encerramento explícito do engine SQLAlchemy ao terminar o processo.
 
-As instruções estão em `RAILWAY_PUBLICACAO.md`. Ainda não foram criados
-serviços ou domínios no Railway nesta etapa.
+As instruções estão em `AWS_EC2_PUBLICACAO.md`, com o compose em
+`deploy/ec2/docker-compose.yml`. O desenho poderá evoluir para RDS, Secrets
+Manager e CloudWatch sem alterar o modelo analítico.
 
 ---
 
@@ -430,8 +432,7 @@ serviços ou domínios no Railway nesta etapa.
 
 1. Formalizar a aprovação funcional dos KPIs com amostras revisadas pelos
    responsáveis de negócio
-2. Criar os serviços privados de PostgreSQL e ETL no Railway e executar uma
-   carga controlada
+2. Subir PostgreSQL e Metabase na EC2 e executar uma carga controlada do ETL
 3. Testar o runner local com uma execução controlada e um caso de falha para
    confirmar retry, lock e registro em `etl_run_log`
 4. Definir o desenho AWS/Kubernetes de jobs, observabilidade, alertas,
