@@ -1,26 +1,26 @@
 {
   "acceptance_version": 1,
   "status": "accepted",
-  "started_at": "2026-07-18T01:04:17.880257+00:00",
-  "finished_at": "2026-07-18T01:04:18.090951+00:00",
+  "started_at": "2026-07-19T14:38:46.057637+00:00",
+  "finished_at": "2026-07-19T14:38:46.428803+00:00",
   "profile": {
-    "schema_version": 4,
+    "schema_version": 5,
     "view_version": 3,
     "row_counts": {
       "dim_sprint": 16,
-      "dim_ticket_jira": 5312,
+      "dim_ticket_jira": 5314,
       "fato_clockify_entry": 20299,
       "bridge_clockify_entry_tag": 20404,
       "bridge_clockify_entry_issue": 6304,
       "bridge_clockify_entry_sprint": 20325,
-      "fato_jira_ticket_sprint": 1010,
-      "jira_sprint_changelog": 601
+      "fato_jira_ticket_sprint": 1011,
+      "jira_sprint_changelog": 602
     },
     "view_counts": {
       "vw_clockify_entry_detail": 20299,
       "vw_clockify_entry_tag_detail": 20404,
       "vw_clockify_entry_sprint_detail": 20325,
-      "vw_jira_ticket_sprint_detail": 1010
+      "vw_jira_ticket_sprint_detail": 1011
     },
     "clockify_date_range": {
       "min": "2026-01-02",
@@ -28,7 +28,7 @@
     },
     "jira_updated_range": {
       "min": "2026-01-05T06:41:55-03:00",
-      "max": "2026-07-17T18:51:15.998000-03:00"
+      "max": "2026-07-18T01:45:12.575000-03:00"
     },
     "sprint_date_range": {
       "min": "2026-04-02T16:50:04-03:00",
@@ -46,10 +46,10 @@
     "fact_total_hours": 21429.2875,
     "metric_total_hours": 21429.2875,
     "squad_total_hours": 21429.2875,
-    "assigned_sprint_hours": 1984.4755555555555,
+    "assigned_sprint_hours": 1990.6927777777778,
     "ticket_metrics": {
-      "tickets_total": 690,
-      "tickets_concluidos": 563,
+      "tickets_total": 691,
+      "tickets_concluidos": 564,
       "tickets_planejados_inicio": 426,
       "tickets_planejados_concluidos": 321,
       "eficiencia_sprint": 0.7535211267605634
@@ -58,11 +58,11 @@
   "checks": [
     {
       "id": "schema_version",
-      "name": "Schema operacional da fase 4 aplicado",
+      "name": "Schema operacional com Atravessamento e bridge auditável aplicado",
       "status": "pass",
       "severity": "critical",
-      "observed": 4,
-      "expected": ">= 4"
+      "observed": 5,
+      "expected": ">= 5"
     },
     {
       "id": "view_version",
@@ -85,7 +85,7 @@
       "name": "Tabela dim_ticket_jira carregada",
       "status": "pass",
       "severity": "high",
-      "observed": 5312,
+      "observed": 5314,
       "expected": "> 0"
     },
     {
@@ -125,7 +125,7 @@
       "name": "Tabela fato_jira_ticket_sprint perfilada",
       "status": "pass",
       "severity": "info",
-      "observed": 1010,
+      "observed": 1011,
       "expected": ">= 0"
     },
     {
@@ -133,7 +133,7 @@
       "name": "Tabela jira_sprint_changelog perfilada",
       "status": "pass",
       "severity": "info",
-      "observed": 601,
+      "observed": 602,
       "expected": ">= 0"
     },
     {
@@ -209,6 +209,14 @@
       "expected": "0"
     },
     {
+      "id": "invalid_clockify_issue_extraction_method",
+      "name": "Quality gate: invalid_clockify_issue_extraction_method",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
       "id": "clockify_entry_view_grain",
       "name": "View de lançamento mantém uma linha por entrada",
       "status": "pass",
@@ -237,8 +245,8 @@
       "name": "View Jira mantém uma linha por ticket × sprint",
       "status": "pass",
       "severity": "critical",
-      "observed": 1010,
-      "expected": 1010
+      "observed": 1011,
+      "expected": 1011
     },
     {
       "id": "total_hours_reconciliation",
@@ -261,7 +269,7 @@
       "name": "Horas atribuídas a sprint não superam o total de lançamentos",
       "status": "pass",
       "severity": "high",
-      "observed": 1984.4755555555555,
+      "observed": 1990.6927777777778,
       "expected": "<= 21429.2875"
     },
     {
@@ -314,8 +322,8 @@
     }
   ],
   "summary": {
-    "total_checks": 32,
-    "passed": 32,
+    "total_checks": 33,
+    "passed": 33,
     "warnings": 0,
     "failed": 0
   }

@@ -3,6 +3,8 @@
 from datetime import datetime, timezone
 
 from etl.clockify import ClockifyService
+from etl.jira import JiraService
+from config.settings import JIRA_CROSSING_FIELD, JIRA_SPRINT_FIELD, JIRA_SQUAD_FIELD
 
 
 def test_clockify_report_rows_are_deduplicated_by_entry_id():
@@ -54,11 +56,56 @@ def test_clockify_interval_overlap_excludes_entry_after_sprint_end():
     assert ClockifyService._interval_overlaps(entry, sprint) is False
 
 
+def test_clockify_issue_key_source_is_classified_per_issue():
+    sources = ClockifyService._extract_issue_keys_with_sources(
+        "Validar ZG-100 e ZGT-200",
+        "ZG-100 - ajuste",
+    )
+    assert sources == {
+        "ZG-100": {"description", "task_name"},
+        "ZGT-200": {"description"},
+    }
+    assert ClockifyService._extraction_method(sources["ZG-100"]) == (
+        "description_and_task"
+    )
+    assert ClockifyService._extraction_method(sources["ZGT-200"]) == "description"
+    assert ClockifyService._extraction_method({"task_name"}) == "task_name"
+
+
+def test_jira_crossing_option_is_normalized_to_nullable_boolean():
+    assert JiraService._parse_crossing_flag({"value": "Sim"}) is True
+    assert JiraService._parse_crossing_flag({"value": "Não"}) is False
+    assert JiraService._parse_crossing_flag(None) is None
+    assert JiraService._parse_crossing_flag({"value": "Outra opção"}) is None
+
+
+def test_jira_transform_persists_crossing_flag_on_ticket():
+    issue = {
+        "key": "ZG-100",
+        "fields": {
+            "summary": "Ticket de teste",
+            "status": {"name": "Em andamento"},
+            "project": {"key": "ZG", "name": "Projeto ZG"},
+            "created": "2026-04-01T10:00:00Z",
+            "updated": "2026-04-02T10:00:00Z",
+            "resolutiondate": None,
+            JIRA_SQUAD_FIELD: {"value": "Squad de teste"},
+            JIRA_SPRINT_FIELD: [],
+            JIRA_CROSSING_FIELD: {"value": "Sim"},
+        },
+    }
+    result = JiraService()._transform_issue(issue)
+    assert result["ticket"].atravessamento_flag is True
+
+
 if __name__ == "__main__":
     tests = [
         test_clockify_report_rows_are_deduplicated_by_entry_id,
         test_clockify_transform_deduplicates_tags_before_composite_load,
         test_clockify_interval_overlap_excludes_entry_after_sprint_end,
+        test_clockify_issue_key_source_is_classified_per_issue,
+        test_jira_crossing_option_is_normalized_to_nullable_boolean,
+        test_jira_transform_persists_crossing_flag_on_ticket,
     ]
     for test in tests:
         test()

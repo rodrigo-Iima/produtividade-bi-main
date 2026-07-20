@@ -3,7 +3,11 @@ import re
 from typing import Optional
 
 from clients.jira_client import JiraClient
-from config.settings import JIRA_SQUAD_FIELD, JIRA_SPRINT_FIELD
+from config.settings import (
+    JIRA_CROSSING_FIELD,
+    JIRA_SQUAD_FIELD,
+    JIRA_SPRINT_FIELD,
+)
 from database.connection import SessionLocal
 from models.dim_sprint import DimSprint
 from models.dim_ticket_jira import DimTicketJira
@@ -29,6 +33,7 @@ class JiraService:
         "resolutiondate",
         JIRA_SQUAD_FIELD,
         JIRA_SPRINT_FIELD,
+        JIRA_CROSSING_FIELD,
     ]
 
     def __init__(self):
@@ -79,6 +84,53 @@ class JiraService:
             "issue_keys": [record["ticket"].issue_key for record in transformed],
         }
 
+    def backfill_crossing_flags(
+        self,
+        projects: list[str] | None = None,
+    ) -> dict[str, int]:
+        """Refresh only Atravessamento for already loaded Jira tickets.
+
+        This one-time backfill avoids rebuilding ticket/sprint relations and
+        is useful after introducing a new Jira field into an existing model.
+        """
+        if projects is None:
+            projects = ["ZGT", "ZG", "ZGTN", "SRE"]
+
+        project_clause = " OR ".join(f"project = {project}" for project in projects)
+        jql = f"({project_clause}) AND created >= \"2026-01-01\""
+        raw_issues = self.client.search(
+            jql=jql,
+            fields=["key", JIRA_CROSSING_FIELD],
+        )
+
+        session = SessionLocal()
+        counts = {"extracted": len(raw_issues), "matched": 0, "updated": 0}
+        try:
+            for issue in raw_issues:
+                ticket = session.get(DimTicketJira, issue.get("key"))
+                if ticket is None:
+                    continue
+                counts["matched"] += 1
+                value = self._parse_crossing_flag(
+                    (issue.get("fields") or {}).get(JIRA_CROSSING_FIELD)
+                )
+                if ticket.atravessamento_flag != value:
+                    ticket.atravessamento_flag = value
+                    counts["updated"] += 1
+
+            session.commit()
+            print(
+                "[JiraETL] Atravessamento backfill: "
+                f"{counts['matched']} tickets matched, "
+                f"{counts['updated']} updated"
+            )
+            return counts
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
     def _build_jql(self, projects: list[str], incremental: bool) -> str:
         project_clause = " OR ".join(f"project = {project}" for project in projects)
         parts = [f"({project_clause})", 'created >= "2026-01-01"']
@@ -118,6 +170,9 @@ class JiraService:
             project_key=fields["project"]["key"],
             project_name=fields["project"]["name"],
             squad_jira=squad_jira,
+            atravessamento_flag=self._parse_crossing_flag(
+                fields.get(JIRA_CROSSING_FIELD)
+            ),
             created_at=self._parse_date(fields["created"]),
             resolved_at=self._parse_date(fields.get("resolutiondate")),
             updated_at=self._parse_date(fields["updated"]),
@@ -269,6 +324,28 @@ class JiraService:
         if isinstance(value, list):
             return value
         return []
+
+    @staticmethod
+    def _parse_crossing_flag(value) -> Optional[bool]:
+        """Normalize Jira's Atravessamento radio option to a nullable bool."""
+        if isinstance(value, dict):
+            value = value.get("value") or value.get("name")
+        elif isinstance(value, list):
+            value = value[0] if value else None
+
+        if isinstance(value, dict):
+            value = value.get("value") or value.get("name")
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return None
+
+        normalized = str(value).strip().casefold()
+        if normalized == "sim":
+            return True
+        if normalized in {"não", "nao"}:
+            return False
+        return None
 
     @staticmethod
     def _parse_date(value: Optional[str]) -> Optional[datetime]:

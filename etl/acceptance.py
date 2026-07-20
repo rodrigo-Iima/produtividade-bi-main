@@ -28,10 +28,10 @@ def run_acceptance() -> dict[str, Any]:
     _add_check(
         checks,
         "schema_version",
-        "Schema operacional da fase 4 aplicado",
+        "Schema operacional com Atravessamento e bridge auditável aplicado",
         profile["schema_version"],
-        ">= 4",
-        profile["schema_version"] >= 4,
+        ">= 5",
+        profile["schema_version"] >= 5,
         "critical",
     )
     _add_check(

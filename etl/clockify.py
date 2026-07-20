@@ -82,13 +82,19 @@ class ClockifyService:
 
                 description = raw_entry.get("description")
                 task_name = entry.task_name
-                issue_keys = self._extract_issue_keys(description, task_name)
+                issue_sources = self._extract_issue_keys_with_sources(
+                    description,
+                    task_name,
+                )
+                issue_keys = list(issue_sources)
                 valid_issue_keys = [key for key in issue_keys if key in known_issues]
                 issues.extend(
                     BridgeClockifyEntryIssue(
                         entry_id=entry.entry_id,
                         issue_key=issue_key,
-                        extraction_method="description_or_task",
+                        extraction_method=self._extraction_method(
+                            issue_sources[issue_key]
+                        ),
                     )
                     for issue_key in valid_issue_keys
                 )
@@ -422,15 +428,32 @@ class ClockifyService:
 
     @staticmethod
     def _extract_issue_keys(*texts: Optional[str]) -> list[str]:
-        keys = []
-        for value in texts:
+        return list(ClockifyService._extract_issue_keys_with_sources(*texts))
+
+    @staticmethod
+    def _extract_issue_keys_with_sources(
+        *texts: Optional[str],
+    ) -> dict[str, set[str]]:
+        sources: dict[str, set[str]] = defaultdict(set)
+        source_names = ("description", "task_name")
+        for index, value in enumerate(texts):
             if not value:
                 continue
             for match in JIRA_ISSUE_KEY_PATTERN.findall(value):
                 normalized = match.upper()
-                if normalized not in keys:
-                    keys.append(normalized)
-        return keys
+                source = source_names[index] if index < len(source_names) else "other"
+                sources[normalized].add(source)
+        return sources
+
+    @staticmethod
+    def _extraction_method(sources: set[str]) -> str:
+        if sources == {"description"}:
+            return "description"
+        if sources == {"task_name"}:
+            return "task_name"
+        if "description" in sources and "task_name" in sources:
+            return "description_and_task"
+        return "legacy"
 
     @staticmethod
     def _parse_iso_date(value: str) -> datetime:

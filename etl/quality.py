@@ -70,6 +70,12 @@ def validate_loaded_data() -> dict[str, Any]:
             SELECT COUNT(*) FROM bridge_clockify_entry_sprint
             WHERE assignment_status NOT IN ('atribuido', 'ambiguo', 'sem_sprint', 'sem_ticket')
         """,
+        "invalid_clockify_issue_extraction_method": """
+            SELECT COUNT(*) FROM bridge_clockify_entry_issue
+            WHERE extraction_method NOT IN (
+                'description', 'task_name', 'description_and_task', 'legacy'
+            )
+        """,
     }
 
     counts = {

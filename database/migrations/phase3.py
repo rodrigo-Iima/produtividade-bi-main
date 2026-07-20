@@ -66,6 +66,7 @@ VIEWS: dict[str, str] = {
             sp.sprint_end, sp.sprint_state, t.summary, t.status_original,
             COALESCE(st.status_agrupado, 'Não Classificado') AS status_agrupado,
             t.project_key, t.project_name, t.squad_jira,
+            t.atravessamento_flag,
             t.created_at, t.resolved_at, t.updated_at,
             r.sprint_entrada_at, r.planejado_no_inicio
         FROM fato_jira_ticket_sprint r

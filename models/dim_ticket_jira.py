@@ -18,6 +18,10 @@ class DimTicketJira(Base):
     project_key: Mapped[str] = mapped_column(String(20), index=True)
     project_name: Mapped[str] = mapped_column(String(200))
     squad_jira: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, index=True)
+    atravessamento_flag: Mapped[Optional[bool]] = mapped_column(
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)

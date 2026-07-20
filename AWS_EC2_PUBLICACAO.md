@@ -76,11 +76,33 @@ da carga, libera o lock e fecha o engine SQLAlchemy.
 
 ## Cron inicial
 
+Use o wrapper versionado para centralizar logs e, opcionalmente, enviar sinais
+de sucesso e falha ao monitor de cron:
+
+```bash
+chmod +x /opt/produtividade-bi/deploy/ec2/run_etl.sh
+```
+
 Use `crontab -e` para o usuário que executará o ETL:
 
 ```cron
-0 7 * * 1-5 cd /opt/produtividade-bi && mkdir -p .runtime && ./.venv/bin/python -m operationalization run --retries 1 --retry-delay 30 >> .runtime/etl.log 2>&1
+0 7 * * 1-5 /opt/produtividade-bi/deploy/ec2/run_etl.sh
 ```
+
+Substitua a linha anterior do cron por esta, para não executar duas cargas no
+mesmo horário. O wrapper usa o lock local e registra tudo em
+`.runtime/etl.log`.
+
+### Alerta de falha
+
+Uma opção simples é criar um check no Healthchecks.io para o cron, configurar o
+horário `0 7 * * 1-5`, o fuso `America/Sao_Paulo` e uma margem maior que a
+duração normal da carga. Copie a Ping URL para `ETL_HEALTHCHECK_URL` no `.env`
+do ETL. A URL é um segredo e não deve ser versionada nem compartilhada.
+
+O wrapper envia `/start`, um ping de sucesso ao terminar com código `0` e
+`/fail` quando o ETL termina com erro. O monitor também alerta quando nenhum
+ping chega no horário esperado, cobrindo falha do cron, da máquina ou da rede.
 
 Antes do primeiro agendamento, execute manualmente um ciclo controlado e
 verifique:
