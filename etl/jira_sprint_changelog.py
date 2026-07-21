@@ -209,7 +209,13 @@ class SprintChangelogETL:
         start = self._parse_date(metadata.get("startDate")) if metadata.get("startDate") else None
         end = self._parse_date(metadata.get("endDate")) if metadata.get("endDate") else None
         state = metadata.get("state")
+        origin_board_id = self._parse_int(
+            metadata.get("originBoardId") or metadata.get("boardId")
+        )
         start = start or (existing.sprint_start if existing is not None else None)
+        origin_board_id = origin_board_id or (
+            existing.origin_board_id if existing is not None else None
+        )
         state = state or (existing.sprint_state if existing is not None else None)
 
         if not sprint_is_in_scope(start, state):
@@ -222,6 +228,7 @@ class SprintChangelogETL:
             sprint_start=start,
             sprint_end=end,
             sprint_state=state,
+            origin_board_id=origin_board_id,
         )
         excluded = statement.excluded
         statement = statement.on_conflict_do_update(
@@ -234,6 +241,9 @@ class SprintChangelogETL:
                 "sprint_start": func.coalesce(DimSprint.sprint_start, excluded.sprint_start),
                 "sprint_end": func.coalesce(DimSprint.sprint_end, excluded.sprint_end),
                 "sprint_state": func.coalesce(DimSprint.sprint_state, excluded.sprint_state),
+                "origin_board_id": func.coalesce(
+                    DimSprint.origin_board_id, excluded.origin_board_id
+                ),
             },
         )
         session.execute(statement)
@@ -254,6 +264,15 @@ class SprintChangelogETL:
                 metadata = {}
             self._sprint_metadata_cache[sprint_id] = metadata
             return metadata
+
+    @staticmethod
+    def _parse_int(value) -> int | None:
+        if value is None or value == "":
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
 
     @staticmethod
     def _load_sprint_ids(session) -> dict[str, int]:

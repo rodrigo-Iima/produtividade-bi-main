@@ -1,6 +1,6 @@
 """Unit tests for Phase 4 transformations that do not require PostgreSQL."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from etl.clockify import ClockifyService
 from etl.jira import JiraService
@@ -38,6 +38,37 @@ def test_clockify_transform_deduplicates_tags_before_composite_load():
     assert fact.duration_seconds == 3600
     assert len(tags) == 1
     assert tags[0].tag_id == 8
+
+
+def test_clockify_transform_snapshots_squad_role_and_local_date():
+    raw = {
+        "_id": "entry-local-date",
+        "userId": "user-1",
+        "projectName": "Projeto",
+        "tags": [],
+        "timeInterval": {
+            "start": "2026-04-03T02:30:00Z",
+            "end": "2026-04-03T03:30:00Z",
+        },
+    }
+    fact, _ = ClockifyService()._transform_entry(
+        raw,
+        {"user-1": "Desenvolvedor"},
+        {},
+        {},
+        {},
+        {
+            "user-1": {
+                "squad_id": 7,
+                "squad_name": "Núcleo",
+                "papel": "Desenvolvedor",
+            }
+        },
+    )
+    assert fact.squad_id_at_entry == 7
+    assert fact.squad_name_at_entry == "Núcleo"
+    assert fact.papel_at_entry == "Desenvolvedor"
+    assert fact.entry_date_local == date(2026, 4, 2)
 
 
 def test_clockify_interval_overlap_excludes_entry_after_sprint_end():
@@ -102,6 +133,7 @@ if __name__ == "__main__":
     tests = [
         test_clockify_report_rows_are_deduplicated_by_entry_id,
         test_clockify_transform_deduplicates_tags_before_composite_load,
+        test_clockify_transform_snapshots_squad_role_and_local_date,
         test_clockify_interval_overlap_excludes_entry_after_sprint_end,
         test_clockify_issue_key_source_is_classified_per_issue,
         test_jira_crossing_option_is_normalized_to_nullable_boolean,

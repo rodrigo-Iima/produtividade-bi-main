@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 import re
 from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
 from clients.clockify_client import ClockifyClient
 from database.connection import SessionLocal
@@ -52,6 +53,7 @@ class ClockifyService:
             raw_entries = self._deduplicate_entries(raw_entries)
 
             self._ensure_entry_users(session, raw_entries)
+            collaborator_snapshots = self._build_collaborator_snapshot_map(session)
             task_map = self._fetch_and_cache_tasks(raw_entries)
             tag_map = self._ensure_tags(session, raw_entries)
             focus_map = self._get_focus_map(session)
@@ -72,6 +74,7 @@ class ClockifyService:
                     task_map,
                     tag_map,
                     focus_map,
+                    collaborator_snapshots,
                 )
                 if transformed is None:
                     continue
@@ -198,6 +201,27 @@ class ClockifyService:
             ))
         session.flush()
 
+    @staticmethod
+    def _build_collaborator_snapshot_map(session) -> dict[str, dict[str, Any]]:
+        """Return the current Clockify classification for entry snapshots."""
+        rows = session.query(
+            DimColaborador.user_id,
+            DimColaborador.papel,
+            DimColaborador.squad_id,
+            DimSquad.nome,
+        ).outerjoin(
+            DimSquad,
+            DimSquad.squad_id == DimColaborador.squad_id,
+        ).all()
+        return {
+            user_id: {
+                "papel": papel,
+                "squad_id": squad_id,
+                "squad_name": squad_name,
+            }
+            for user_id, papel, squad_id, squad_name in rows
+        }
+
     def _ensure_entry_users(self, session, entries: list[dict]) -> None:
         existing = {
             row.user_id for row in session.query(DimColaborador.user_id).all()
@@ -297,6 +321,7 @@ class ClockifyService:
         task_map: dict[str, str],
         tag_map: dict[str, int],
         focus_map: dict[tuple[str, int], str],
+        collaborator_snapshots: Optional[dict[str, dict[str, Any]]] = None,
     ) -> Optional[tuple[FatoClockifyEntry, list[BridgeClockifyEntryTag]]]:
         interval = raw.get("timeInterval") or {}
         start_value = interval.get("start")
@@ -313,7 +338,8 @@ class ClockifyService:
             raise ValueError("Clockify entry sem _id ou userId")
         task_id = raw.get("taskId")
         task_name = raw.get("taskName") or task_map.get(task_id)
-        role = user_roles.get(user_id)
+        collaborator = (collaborator_snapshots or {}).get(user_id, {})
+        role = collaborator.get("papel") or user_roles.get(user_id)
 
         fact = FatoClockifyEntry(
             entry_id=entry_id,
@@ -325,7 +351,13 @@ class ClockifyService:
             started_at=started_at,
             ended_at=ended_at,
             entry_date=started_at.date(),
+            entry_date_local=started_at.astimezone(
+                ZoneInfo("America/Sao_Paulo")
+            ).date(),
             duration_seconds=duration_seconds,
+            squad_id_at_entry=collaborator.get("squad_id"),
+            squad_name_at_entry=collaborator.get("squad_name"),
+            papel_at_entry=role,
         )
 
         tag_records = []

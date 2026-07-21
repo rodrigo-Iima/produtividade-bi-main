@@ -11,6 +11,7 @@ from etl.jira import JiraService
 from etl.clockify import ClockifyService
 from etl.jira_sprint_changelog import run_sprint_changelog_etl
 from etl.jira_sprint_enrichment import run_sprint_enrichment
+from etl.jira_quick_filters import run_jira_quick_filters
 from etl.quality import validate_loaded_data
 
 
@@ -91,6 +92,14 @@ def _run_pipeline() -> int:
 
     if not _run_step("Enriquecimento das sprints Jira", run_sprint_enrichment, logger):
         failures.append("Enriquecimento das sprints Jira")
+        return _finish_run(failures, logger)
+
+    if not _run_step(
+        "Mapeamento Sprint × Squad pelos quick filters Jira",
+        run_jira_quick_filters,
+        logger,
+    ):
+        failures.append("Mapeamento Sprint × Squad pelos quick filters Jira")
         return _finish_run(failures, logger)
 
     # Clockify depende das sprints e tickets carregados acima para construir os

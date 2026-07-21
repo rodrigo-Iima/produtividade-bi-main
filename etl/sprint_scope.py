@@ -29,5 +29,5 @@ def sprint_is_in_scope(
 
     return (
         sprint_state.strip().upper() in ALLOWED_SPRINT_STATES
-        and SPRINT_START_AFTER < sprint_start <= current
+        and SPRINT_START_AFTER <= sprint_start <= current
     )

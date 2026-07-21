@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import BigInteger, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base
@@ -21,3 +21,9 @@ class DimSprint(Base):
     sprint_end: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     sprint_state: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+    # Jira Agile board that owns the sprint. A sprint may be shared by several
+    # squads through the board's quick filters.
+    origin_board_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, nullable=True, index=True
+    )

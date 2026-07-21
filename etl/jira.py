@@ -188,6 +188,9 @@ class JiraService:
             sprint_state = sprint.get("state")
             if not sprint_is_in_scope(sprint_start, sprint_state):
                 continue
+            origin_board_id = self._parse_int(
+                sprint.get("originBoardId") or sprint.get("boardId")
+            )
             sprint_rows.append({
                 "sprint": DimSprint(
                     sprint_id=sprint_id,
@@ -195,6 +198,7 @@ class JiraService:
                     sprint_start=sprint_start,
                     sprint_end=self._parse_date(sprint.get("endDate")),
                     sprint_state=sprint_state,
+                    origin_board_id=origin_board_id,
                 ),
                 "relation": FatoJiraTicketSprint(
                     issue_key=ticket.issue_key,
@@ -346,6 +350,15 @@ class JiraService:
         if normalized in {"não", "nao"}:
             return False
         return None
+
+    @staticmethod
+    def _parse_int(value) -> Optional[int]:
+        if value is None or value == "":
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
 
     @staticmethod
     def _parse_date(value: Optional[str]) -> Optional[datetime]:

@@ -119,7 +119,7 @@ WITH tag_by_entry AS (
     LEFT JOIN public.dim_tag AS t
       ON t.tag_id = bt.tag_id
     LEFT JOIN public.dim_papel_atividade_principal AS pm
-      ON pm.papel = c.papel
+      ON pm.papel = COALESCE(e.papel_at_entry, c.papel)
     GROUP BY e.entry_id
 ),
 issue_by_entry AS (
@@ -165,15 +165,16 @@ entry_sprint_rollup AS (
 SELECT
     e.entry_id,
     e.entry_date,
+    e.entry_date_local,
     e.started_at,
     e.ended_at,
     e.duration_seconds,
     e.duration_seconds / 3600.0 AS duration_hours,
     e.user_id,
     c.name AS collaborator_name,
-    c.papel,
-    c.squad_id AS collaborator_squad_id,
-    sq.nome AS collaborator_squad_name,
+    COALESCE(e.papel_at_entry, c.papel) AS papel,
+    COALESCE(e.squad_id_at_entry, c.squad_id) AS collaborator_squad_id,
+    COALESCE(e.squad_name_at_entry, sq.nome) AS collaborator_squad_name,
     e.project_name,
     e.task_name,
     esr.canonical_sprint_id AS sprint_id,
@@ -217,7 +218,7 @@ WITH entry_period AS (
         s.sprint_end AS period_sprint_end,
         s.sprint_state AS period_sprint_state,
         eb.entry_id,
-        eb.entry_date,
+        eb.entry_date_local,
         eb.duration_hours,
         eb.user_id,
         eb.collaborator_name,
@@ -236,12 +237,12 @@ WITH entry_period AS (
         eb.sprint_id AS ticket_sprint_id
     FROM public.vw_dashboard_valid_sprint AS s
     JOIN public.vw_dashboard_entry_base AS eb
-      ON eb.entry_date >= (
-             s.sprint_start AT TIME ZONE 'America/Sao_Paulo'
-         )::date
-     AND eb.entry_date <= COALESCE(
-             (s.sprint_end AT TIME ZONE 'America/Sao_Paulo')::date,
-             CURRENT_DATE
+      ON eb.started_at IS NOT NULL
+     AND eb.ended_at IS NOT NULL
+     AND eb.ended_at > s.sprint_start
+     AND (
+            s.sprint_end IS NULL
+            OR eb.started_at < s.sprint_end
          )
 )
 SELECT

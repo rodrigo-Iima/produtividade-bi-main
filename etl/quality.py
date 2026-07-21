@@ -76,6 +76,13 @@ def validate_loaded_data() -> dict[str, Any]:
                 'description', 'task_name', 'description_and_task', 'legacy'
             )
         """,
+        "dashboard_entries_without_sprint": """
+            SELECT COUNT(*)
+            FROM public.vw_dashboard_entry_final
+            WHERE sprint_assignment_status NOT IN (
+                'atribuido', 'nao_aplicavel', 'historico_sem_sprint'
+            )
+        """,
     }
 
     counts = {

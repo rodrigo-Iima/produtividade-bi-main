@@ -111,3 +111,111 @@ class JiraClient:
             )
             response.raise_for_status()
         return response.json()
+
+    def get_board_quick_filters(self, board_id: int) -> list[dict]:
+        """Fetch all quick filters configured on a Jira Agile board."""
+        url = f"{JIRA_URL}/rest/agile/1.0/board/{board_id}/quickfilter"
+        start_at = 0
+        all_filters: list[dict] = []
+
+        while True:
+            response = requests.get(
+                url,
+                auth=self.auth,
+                headers=self.headers,
+                params={"startAt": start_at, "maxResults": 50},
+                timeout=self.timeout,
+            )
+            if response.status_code != 200:
+                print(
+                    f"[JiraClient] Error fetching quick filters for board "
+                    f"{board_id}: {response.status_code} - {response.text}"
+                )
+                response.raise_for_status()
+
+            data = response.json()
+            values = data.get("values", [])
+            all_filters.extend(values)
+
+            if data.get("isLast", True) or not values:
+                break
+            start_at += len(values)
+
+        return all_filters
+
+    def get_board_sprints(self, board_id: int) -> list[dict]:
+        """Fetch the complete sprint catalog for an Agile board."""
+        url = f"{JIRA_URL}/rest/agile/1.0/board/{board_id}/sprint"
+        start_at = 0
+        all_sprints: list[dict] = []
+
+        while True:
+            response = requests.get(
+                url,
+                auth=self.auth,
+                headers=self.headers,
+                params={
+                    "startAt": start_at,
+                    "maxResults": 50,
+                    "state": "active,closed,future",
+                },
+                timeout=self.timeout,
+            )
+            if response.status_code != 200:
+                if (
+                    response.status_code == 400
+                    and "não aceita sprints" in response.text.casefold()
+                ):
+                    print(
+                        f"[JiraClient] Skipping board {board_id}: "
+                        "board does not support sprints"
+                    )
+                    return all_sprints
+                print(
+                    f"[JiraClient] Error fetching sprints for board "
+                    f"{board_id}: {response.status_code} - {response.text}"
+                )
+                response.raise_for_status()
+
+            data = response.json()
+            values = data.get("values", [])
+            all_sprints.extend(values)
+
+            if data.get("isLast", True) or not values:
+                break
+            start_at += len(values)
+
+        return all_sprints
+
+    def get_boards(self, project_key_or_id: str | None = None) -> list[dict]:
+        """Fetch Agile boards, optionally limited to a Jira project."""
+        url = f"{JIRA_URL}/rest/agile/1.0/board"
+        start_at = 0
+        all_boards: list[dict] = []
+
+        while True:
+            params = {"startAt": start_at, "maxResults": 50}
+            if project_key_or_id:
+                params["projectKeyOrId"] = project_key_or_id
+            response = requests.get(
+                url,
+                auth=self.auth,
+                headers=self.headers,
+                params=params,
+                timeout=self.timeout,
+            )
+            if response.status_code != 200:
+                print(
+                    f"[JiraClient] Error fetching boards: "
+                    f"{response.status_code} - {response.text}"
+                )
+                response.raise_for_status()
+
+            data = response.json()
+            values = data.get("values", [])
+            all_boards.extend(values)
+            if data.get("isLast", True) or not values:
+                break
+            start_at += len(values)
+
+        return all_boards
