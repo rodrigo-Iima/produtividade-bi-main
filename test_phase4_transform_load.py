@@ -117,6 +117,7 @@ def test_jira_transform_persists_crossing_flag_on_ticket():
             "summary": "Ticket de teste",
             "status": {"name": "Em andamento"},
             "project": {"key": "ZG", "name": "Projeto ZG"},
+            "issuetype": {"id": "10056", "name": "Melhoria"},
             "created": "2026-04-01T10:00:00Z",
             "updated": "2026-04-02T10:00:00Z",
             "resolutiondate": None,
@@ -127,6 +128,8 @@ def test_jira_transform_persists_crossing_flag_on_ticket():
     }
     result = JiraService()._transform_issue(issue)
     assert result["ticket"].atravessamento_flag is True
+    assert result["ticket"].issue_type_id == "10056"
+    assert result["ticket"].issue_type_name == "Melhoria"
 
 
 if __name__ == "__main__":

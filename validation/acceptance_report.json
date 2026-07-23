@@ -1,58 +1,58 @@
 {
   "acceptance_version": 1,
   "status": "accepted",
-  "started_at": "2026-07-19T14:38:46.057637+00:00",
-  "finished_at": "2026-07-19T14:38:46.428803+00:00",
+  "started_at": "2026-07-22T10:01:17.349893+00:00",
+  "finished_at": "2026-07-22T10:01:17.550000+00:00",
   "profile": {
-    "schema_version": 5,
+    "schema_version": 10,
     "view_version": 3,
     "row_counts": {
-      "dim_sprint": 16,
-      "dim_ticket_jira": 5314,
-      "fato_clockify_entry": 20299,
-      "bridge_clockify_entry_tag": 20404,
-      "bridge_clockify_entry_issue": 6304,
-      "bridge_clockify_entry_sprint": 20325,
-      "fato_jira_ticket_sprint": 1011,
-      "jira_sprint_changelog": 602
+      "dim_sprint": 106,
+      "dim_ticket_jira": 5413,
+      "fato_clockify_entry": 20647,
+      "bridge_clockify_entry_tag": 20739,
+      "bridge_clockify_entry_issue": 6444,
+      "bridge_clockify_entry_sprint": 20673,
+      "fato_jira_ticket_sprint": 3159,
+      "jira_sprint_changelog": 3729
     },
     "view_counts": {
-      "vw_clockify_entry_detail": 20299,
-      "vw_clockify_entry_tag_detail": 20404,
-      "vw_clockify_entry_sprint_detail": 20325,
-      "vw_jira_ticket_sprint_detail": 1011
+      "vw_clockify_entry_detail": 20647,
+      "vw_clockify_entry_tag_detail": 20739,
+      "vw_clockify_entry_sprint_detail": 20673,
+      "vw_jira_ticket_sprint_detail": 3159
     },
     "clockify_date_range": {
       "min": "2026-01-02",
-      "max": "2026-07-17"
+      "max": "2026-07-21"
     },
     "jira_updated_range": {
-      "min": "2026-01-05T06:41:55-03:00",
-      "max": "2026-07-18T01:45:12.575000-03:00"
+      "min": "2026-01-05T12:41:55.507000+00:00",
+      "max": "2026-07-22T07:51:52.264000+00:00"
     },
     "sprint_date_range": {
-      "min": "2026-04-02T16:50:04-03:00",
-      "max": "2026-07-13T07:50:42.239000-03:00"
+      "min": "2026-01-05T11:15:22.434000+00:00",
+      "max": "2026-07-21T10:00:00+00:00"
     },
     "failed_changelog_rows": 0,
     "planning_nulls": 0,
     "unmapped_statuses": 0,
-    "entries_without_tags": 1619,
+    "entries_without_tags": 1650,
     "entries_without_sprint_assignment": 0,
-    "ambiguous_sprint_links": 22,
+    "ambiguous_sprint_links": 52,
     "historical_changelog_relations_missing": 0
   },
   "metrics": {
-    "fact_total_hours": 21429.2875,
-    "metric_total_hours": 21429.2875,
-    "squad_total_hours": 21429.2875,
-    "assigned_sprint_hours": 1990.6927777777778,
+    "fact_total_hours": 21813.533055555556,
+    "metric_total_hours": 21813.533055555556,
+    "squad_total_hours": 21813.533055555556,
+    "assigned_sprint_hours": 6361.178055555555,
     "ticket_metrics": {
-      "tickets_total": 691,
-      "tickets_concluidos": 564,
-      "tickets_planejados_inicio": 426,
-      "tickets_planejados_concluidos": 321,
-      "eficiencia_sprint": 0.7535211267605634
+      "tickets_total": 1816,
+      "tickets_concluidos": 1633,
+      "tickets_planejados_inicio": 1436,
+      "tickets_planejados_concluidos": 1154,
+      "eficiencia_sprint": 0.8036211699164345
     }
   },
   "checks": [
@@ -61,7 +61,7 @@
       "name": "Schema operacional com Atravessamento e bridge auditável aplicado",
       "status": "pass",
       "severity": "critical",
-      "observed": 5,
+      "observed": 10,
       "expected": ">= 5"
     },
     {
@@ -77,7 +77,7 @@
       "name": "Tabela dim_sprint carregada",
       "status": "pass",
       "severity": "high",
-      "observed": 16,
+      "observed": 106,
       "expected": "> 0"
     },
     {
@@ -85,7 +85,7 @@
       "name": "Tabela dim_ticket_jira carregada",
       "status": "pass",
       "severity": "high",
-      "observed": 5314,
+      "observed": 5413,
       "expected": "> 0"
     },
     {
@@ -93,7 +93,7 @@
       "name": "Tabela fato_clockify_entry carregada",
       "status": "pass",
       "severity": "high",
-      "observed": 20299,
+      "observed": 20647,
       "expected": "> 0"
     },
     {
@@ -101,7 +101,7 @@
       "name": "Tabela bridge_clockify_entry_tag perfilada",
       "status": "pass",
       "severity": "info",
-      "observed": 20404,
+      "observed": 20739,
       "expected": ">= 0"
     },
     {
@@ -109,7 +109,7 @@
       "name": "Tabela bridge_clockify_entry_issue perfilada",
       "status": "pass",
       "severity": "info",
-      "observed": 6304,
+      "observed": 6444,
       "expected": ">= 0"
     },
     {
@@ -117,7 +117,7 @@
       "name": "Tabela bridge_clockify_entry_sprint perfilada",
       "status": "pass",
       "severity": "info",
-      "observed": 20325,
+      "observed": 20673,
       "expected": ">= 0"
     },
     {
@@ -125,7 +125,7 @@
       "name": "Tabela fato_jira_ticket_sprint perfilada",
       "status": "pass",
       "severity": "info",
-      "observed": 1011,
+      "observed": 3159,
       "expected": ">= 0"
     },
     {
@@ -133,7 +133,7 @@
       "name": "Tabela jira_sprint_changelog perfilada",
       "status": "pass",
       "severity": "info",
-      "observed": 602,
+      "observed": 3729,
       "expected": ">= 0"
     },
     {
@@ -217,60 +217,68 @@
       "expected": "0"
     },
     {
+      "id": "dashboard_entries_without_sprint",
+      "name": "Quality gate: dashboard_entries_without_sprint",
+      "status": "pass",
+      "severity": "critical",
+      "observed": 0,
+      "expected": "0"
+    },
+    {
       "id": "clockify_entry_view_grain",
       "name": "View de lançamento mantém uma linha por entrada",
       "status": "pass",
       "severity": "critical",
-      "observed": 20299,
-      "expected": 20299
+      "observed": 20647,
+      "expected": 20647
     },
     {
       "id": "clockify_tag_view_grain",
       "name": "View de tags mantém uma linha por entrada × tag",
       "status": "pass",
       "severity": "critical",
-      "observed": 20404,
-      "expected": 20404
+      "observed": 20739,
+      "expected": 20739
     },
     {
       "id": "clockify_sprint_view_grain",
       "name": "View de sprint mantém uma linha por entrada × atribuição",
       "status": "pass",
       "severity": "critical",
-      "observed": 20325,
-      "expected": 20325
+      "observed": 20673,
+      "expected": 20673
     },
     {
       "id": "jira_view_grain",
       "name": "View Jira mantém uma linha por ticket × sprint",
       "status": "pass",
       "severity": "critical",
-      "observed": 1011,
-      "expected": 1011
+      "observed": 3159,
+      "expected": 3159
     },
     {
       "id": "total_hours_reconciliation",
       "name": "Total de horas da função coincide com a soma direta da fato",
       "status": "pass",
       "severity": "critical",
-      "observed": 21429.2875,
-      "expected": 21429.2875
+      "observed": 21813.533055555556,
+      "expected": 21813.533055555556
     },
     {
       "id": "squad_hours_reconciliation",
       "name": "Horas por squad recompõem o total sem duplicação",
       "status": "pass",
       "severity": "high",
-      "observed": 21429.2875,
-      "expected": 21429.2875
+      "observed": 21813.533055555556,
+      "expected": 21813.533055555556
     },
     {
       "id": "sprint_hours_bound",
       "name": "Horas atribuídas a sprint não superam o total de lançamentos",
       "status": "pass",
       "severity": "high",
-      "observed": 1990.6927777777778,
-      "expected": "<= 21429.2875"
+      "observed": 6361.178055555555,
+      "expected": "<= 21813.533055555556"
     },
     {
       "id": "historical_sprint_coverage",
@@ -309,7 +317,7 @@
       "name": "Lançamentos sem tag são identificados para aceite funcional",
       "status": "pass",
       "severity": "medium",
-      "observed": 1619,
+      "observed": 1650,
       "expected": "informativo"
     },
     {
@@ -317,13 +325,13 @@
       "name": "Eficiência da sprint está entre 0% e 100%",
       "status": "pass",
       "severity": "high",
-      "observed": 0.7535211267605634,
+      "observed": 0.8036211699164345,
       "expected": "0 <= valor <= 1"
     }
   ],
   "summary": {
-    "total_checks": 33,
-    "passed": 33,
+    "total_checks": 34,
+    "passed": 34,
     "warnings": 0,
     "failed": 0
   }

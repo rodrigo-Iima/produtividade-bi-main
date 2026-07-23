@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 import re
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
@@ -9,7 +10,9 @@ from database.connection import SessionLocal
 from models.bridge_clockify_entry_issue import BridgeClockifyEntryIssue
 from models.bridge_clockify_entry_sprint import BridgeClockifyEntrySprint
 from models.bridge_clockify_entry_tag import BridgeClockifyEntryTag
+from models.bridge_clockify_user_group import BridgeClockifyUserGroup
 from models.dim_colaborador import DimColaborador
+from models.dim_clockify_group import DimClockifyGroup
 from models.dim_papel_tag import DimPapelTag
 from models.dim_squad import DimSquad
 from models.dim_squad_alias import DimSquadAlias
@@ -22,6 +25,7 @@ from providers.tags_provider import normalize_tag
 
 
 JIRA_ISSUE_KEY_PATTERN = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b", re.IGNORECASE)
+CAPACITY_GROUP_PATTERN = re.compile(r"^(30|40)h$", re.IGNORECASE)
 
 
 class ClockifyService:
@@ -35,8 +39,20 @@ class ClockifyService:
         try:
             raw_users = self.client.get_users()
             raw_groups = self.client.get_user_groups()
-            user_roles, user_squads = self._resolve_user_groups(raw_groups)
+            user_roles, user_squads, capacity_by_user = self._resolve_user_groups(
+                raw_groups
+            )
             self._load_colaboradores(session, raw_users, user_roles, user_squads)
+            group_sync = self._sync_clockify_groups(
+                session,
+                raw_groups,
+                capacity_by_user,
+            )
+            print(
+                f"[ClockifyETL] Synced {group_sync['groups']} groups and "
+                f"{group_sync['memberships']} current memberships; "
+                f"active_without_capacity={group_sync['active_without_capacity']}"
+            )
 
             start_dt = self._get_start_date(session, start_date, incremental)
             end_dt = datetime.now(timezone.utc)
@@ -47,7 +63,13 @@ class ClockifyService:
             if not raw_entries:
                 session.commit()
                 print("[ClockifyETL] No completed entries to load.")
-                return {"extracted": 0, "transformed": 0, "loaded": 0}
+                return {
+                    "extracted": 0,
+                    "transformed": 0,
+                    "loaded": 0,
+                    "groups": group_sync["groups"],
+                    "memberships": group_sync["memberships"],
+                }
 
             extracted_count = len(raw_entries)
             raw_entries = self._deduplicate_entries(raw_entries)
@@ -122,6 +144,8 @@ class ClockifyService:
                 "tag_links": len(tags),
                 "issue_links": len(issues),
                 "sprint_links": len(sprint_links),
+                "groups": group_sync["groups"],
+                "memberships": group_sync["memberships"],
             }
         except Exception:
             session.rollback()
@@ -157,21 +181,62 @@ class ClockifyService:
             print(f"[ClockifyETL] Removed {removed} duplicated report rows")
         return unique
 
-    def _resolve_user_groups(self, raw_groups: list[dict[str, Any]]):
+    @staticmethod
+    def _classify_clockify_group(name: str) -> tuple[str, Optional[Decimal]]:
+        """Classify a Clockify group and extract weekly capacity when applicable."""
+        normalized = " ".join((name or "").strip().split())
+        capacity_match = CAPACITY_GROUP_PATTERN.fullmatch(
+            normalized.replace(" ", "")
+        )
+        if capacity_match:
+            return "capacity", Decimal(capacity_match.group(1))
+        if normalized.casefold().startswith("papel -"):
+            return "papel", None
+        if normalized.casefold().startswith("squad"):
+            return "squad", None
+        return "other", None
+
+    def _resolve_user_groups(
+        self,
+        raw_groups: list[dict[str, Any]],
+    ) -> tuple[dict[str, str], dict[str, str], dict[str, Decimal]]:
         roles: dict[str, str] = {}
         squads: dict[str, str] = {}
+        capacity_by_user: dict[str, Decimal] = {}
         for group in raw_groups:
             name = (group.get("name") or "").strip()
             user_ids = group.get("userIds", [])
-            if name.casefold().startswith("papel -"):
+            group_type, capacity_hours = self._classify_clockify_group(name)
+            if group_type == "papel":
                 role = name.split("-", 1)[1].strip()
                 for user_id in user_ids:
+                    previous = roles.get(user_id)
+                    if previous and previous.casefold() != role.casefold():
+                        raise ValueError(
+                            f"Usuário {user_id} pertence a mais de um Papel: "
+                            f"{previous!r} e {role!r}"
+                        )
                     roles[user_id] = role
-            elif name.casefold().startswith("squad"):
+            elif group_type == "squad":
                 squad = re.sub(r"^squad\s*-?\s*", "", name, flags=re.IGNORECASE).strip()
                 for user_id in user_ids:
+                    previous = squads.get(user_id)
+                    if previous and previous.casefold() != squad.casefold():
+                        raise ValueError(
+                            f"Usuário {user_id} pertence a mais de uma Squad: "
+                            f"{previous!r} e {squad!r}"
+                        )
                     squads[user_id] = squad
-        return roles, squads
+            elif group_type == "capacity" and capacity_hours is not None:
+                for user_id in user_ids:
+                    previous = capacity_by_user.get(user_id)
+                    if previous is not None and previous != capacity_hours:
+                        raise ValueError(
+                            f"Usuário {user_id} pertence a mais de um grupo de capacidade: "
+                            f"{previous}h e {capacity_hours}h"
+                        )
+                    capacity_by_user[user_id] = capacity_hours
+        return roles, squads, capacity_by_user
 
     def _load_colaboradores(
         self,
@@ -180,6 +245,11 @@ class ClockifyService:
         user_roles: dict[str, str],
         user_squads: dict[str, str],
     ) -> None:
+        observed_at = datetime.now(timezone.utc)
+        session.query(DimColaborador).update(
+            {DimColaborador.is_active: False},
+            synchronize_session=False,
+        )
         aliases = {
             row.nome_bruto.casefold(): row.squad_id
             for row in session.query(DimSquadAlias).filter(
@@ -198,8 +268,91 @@ class ClockifyService:
                 name=user.get("name") or user_id,
                 papel=user_roles.get(user_id),
                 squad_id=squad_id,
+                is_active=True,
+                clockify_last_seen_at=observed_at,
             ))
         session.flush()
+
+    def _sync_clockify_groups(
+        self,
+        session,
+        raw_groups: list[dict[str, Any]],
+        capacity_by_user: dict[str, Decimal],
+    ) -> dict[str, int]:
+        """Synchronize group catalog and current memberships from Clockify."""
+        observed_at = datetime.now(timezone.utc)
+        known_users = {
+            row.user_id for row in session.query(DimColaborador.user_id).all()
+        }
+        active_users = {
+            row.user_id
+            for row in session.query(DimColaborador.user_id).filter(
+                DimColaborador.is_active.is_(True)
+            ).all()
+        }
+
+        session.query(DimClockifyGroup).filter(
+            DimClockifyGroup.source == "clockify"
+        ).update(
+            {DimClockifyGroup.is_active: False},
+            synchronize_session=False,
+        )
+        session.query(BridgeClockifyUserGroup).update(
+            {BridgeClockifyUserGroup.is_current: False},
+            synchronize_session=False,
+        )
+
+        group_ids: set[str] = set()
+        membership_count = 0
+        for group in raw_groups:
+            group_id = str(group.get("id") or "").strip()
+            name = (group.get("name") or "").strip()
+            if not group_id or not name:
+                raise ValueError("Grupo Clockify sem id ou nome")
+
+            group_type, capacity_hours = self._classify_clockify_group(name)
+            group_ids.add(group_id)
+            session.merge(DimClockifyGroup(
+                group_id=group_id,
+                name=name,
+                group_type=group_type,
+                capacity_hours_week=capacity_hours,
+                source="clockify",
+                is_active=True,
+                last_seen_at=observed_at,
+            ))
+        session.flush()
+
+        existing_memberships = {
+            (row.user_id, row.group_id): row
+            for row in session.query(BridgeClockifyUserGroup).all()
+        }
+        for group in raw_groups:
+            group_id = str(group["id"]).strip()
+            for user_id in set(group.get("userIds") or []):
+                if user_id not in known_users:
+                    continue
+                key = (user_id, group_id)
+                membership = existing_memberships.get(key)
+                if membership is None:
+                    session.add(BridgeClockifyUserGroup(
+                        user_id=user_id,
+                        group_id=group_id,
+                        is_current=True,
+                        first_seen_at=observed_at,
+                        last_seen_at=observed_at,
+                    ))
+                else:
+                    membership.is_current = True
+                    membership.last_seen_at = observed_at
+                membership_count += 1
+        session.flush()
+
+        return {
+            "groups": len(group_ids),
+            "memberships": membership_count,
+            "active_without_capacity": len(active_users - set(capacity_by_user)),
+        }
 
     @staticmethod
     def _build_collaborator_snapshot_map(session) -> dict[str, dict[str, Any]]:
@@ -236,6 +389,7 @@ class ClockifyService:
                 name=entry.get("userName") or user_id,
                 papel=None,
                 squad_id=transversal.squad_id if transversal else None,
+                is_active=False,
             ))
             existing.add(user_id)
         session.flush()

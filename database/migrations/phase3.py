@@ -68,7 +68,8 @@ VIEWS: dict[str, str] = {
             t.project_key, t.project_name, t.squad_jira,
             t.atravessamento_flag,
             t.created_at, t.resolved_at, t.updated_at,
-            r.sprint_entrada_at, r.planejado_no_inicio
+            r.sprint_entrada_at, r.planejado_no_inicio,
+            r.planejamento_status, r.planejamento_source
         FROM fato_jira_ticket_sprint r
         JOIN dim_ticket_jira t ON t.issue_key = r.issue_key
         JOIN dim_sprint sp ON sp.sprint_id = r.sprint_id

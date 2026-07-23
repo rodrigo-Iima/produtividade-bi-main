@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base
@@ -19,4 +20,12 @@ class DimColaborador(Base):
 
     squad_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("dim_squad.squad_id"), nullable=True, index=True
+    )
+
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true"), index=True
+    )
+
+    clockify_last_seen_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )

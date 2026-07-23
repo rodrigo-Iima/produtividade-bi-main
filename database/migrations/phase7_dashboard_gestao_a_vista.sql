@@ -25,9 +25,21 @@ BEGIN;
 -- em ambientes que ainda não receberam a migration Python da fase 5.
 ALTER TABLE public.dim_ticket_jira
     ADD COLUMN IF NOT EXISTS atravessamento_flag BOOLEAN;
+ALTER TABLE public.dim_ticket_jira
+    ADD COLUMN IF NOT EXISTS issue_type_id VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS issue_type_name VARCHAR(100);
+ALTER TABLE public.fato_jira_ticket_sprint
+    ADD COLUMN IF NOT EXISTS planejamento_status VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS planejamento_source VARCHAR(50);
 
 CREATE INDEX IF NOT EXISTS ix_dim_ticket_jira_atravessamento_flag
     ON public.dim_ticket_jira (atravessamento_flag);
+CREATE INDEX IF NOT EXISTS ix_dim_ticket_jira_issue_type_name
+    ON public.dim_ticket_jira (issue_type_name);
+CREATE INDEX IF NOT EXISTS ix_dim_ticket_jira_issue_type_id
+    ON public.dim_ticket_jira (issue_type_id);
+CREATE INDEX IF NOT EXISTS ix_fato_jira_ticket_sprint_planejamento_status
+    ON public.fato_jira_ticket_sprint (planejamento_status);
 
 DROP VIEW IF EXISTS
     public.vw_dashboard_sprint_kpis,
@@ -466,7 +478,9 @@ WITH ticket_sprint_link AS (
         f.issue_key,
         f.sprint_id,
         MIN(f.sprint_entrada_at) AS sprint_entrada_at,
-        BOOL_OR(f.planejado_no_inicio) AS planejado_no_inicio
+        BOOL_OR(f.planejado_no_inicio) AS planejado_no_inicio,
+        MAX(f.planejamento_status) AS planejamento_status,
+        MAX(f.planejamento_source) AS planejamento_source
     FROM public.fato_jira_ticket_sprint AS f
     JOIN public.vw_dashboard_valid_sprint AS s
       ON s.sprint_id = f.sprint_id
@@ -482,6 +496,8 @@ SELECT
     t.summary,
     t.project_key,
     t.project_name,
+    t.issue_type_id,
+    t.issue_type_name,
     t.squad_jira,
     alias_jira.squad_id AS jira_squad_id,
     sq.nome AS jira_squad_name,
@@ -493,6 +509,8 @@ SELECT
     t.updated_at,
     tsl.sprint_entrada_at,
     tsl.planejado_no_inicio,
+    tsl.planejamento_status,
+    tsl.planejamento_source,
     CASE
         WHEN t.created_at IS NOT NULL
          AND t.resolved_at IS NOT NULL
@@ -558,6 +576,8 @@ SELECT
     ts.summary,
     ts.project_key,
     ts.project_name,
+    ts.issue_type_id,
+    ts.issue_type_name,
     ts.jira_squad_id,
     ts.jira_squad_name,
     ts.status_original,
@@ -568,6 +588,8 @@ SELECT
     ts.updated_at,
     ts.sprint_entrada_at,
     ts.planejado_no_inicio,
+    ts.planejamento_status,
+    ts.planejamento_source,
     ts.resolution_time_hours,
     ts.resolution_time_days,
     b.user_id,
@@ -592,17 +614,17 @@ WITH ticket_kpis AS (
             WHERE status_agrupado = 'Concluído'
         ) AS tickets_concluidos,
         COUNT(DISTINCT issue_key) FILTER (
-            WHERE planejado_no_inicio IS TRUE
+            WHERE planejamento_status = 'planejado'
         ) AS tickets_planejados_inicio,
         COUNT(DISTINCT issue_key) FILTER (
-            WHERE planejado_no_inicio IS TRUE
+            WHERE planejamento_status = 'planejado'
               AND status_agrupado = 'Concluído'
         ) AS tickets_planejados_concluidos,
         COUNT(DISTINCT issue_key) FILTER (
             WHERE status_agrupado <> 'Concluído'
         ) AS tickets_nao_concluidos,
         COUNT(DISTINCT issue_key) FILTER (
-            WHERE atravessamento_flag IS TRUE
+            WHERE planejamento_status = 'atravessado'
         ) AS tickets_atravessados,
         AVG(resolution_time_days) FILTER (
             WHERE status_agrupado = 'Concluído'
@@ -619,6 +641,7 @@ WITH ticket_kpis AS (
               AND resolution_time_days IS NOT NULL
         ) AS tmr_tickets_validos
     FROM public.vw_dashboard_ticket_sprint
+    WHERE planejamento_status IN ('planejado', 'atravessado')
     GROUP BY sprint_id
 ),
 assigned_clockify AS (

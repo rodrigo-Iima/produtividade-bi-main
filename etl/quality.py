@@ -45,6 +45,14 @@ def validate_loaded_data() -> dict[str, Any]:
             LEFT JOIN dim_sprint s ON s.sprint_id = r.sprint_id
             WHERE t.issue_key IS NULL OR s.sprint_id IS NULL
         """,
+        "invalid_ticket_sprint_planning_status": """
+            SELECT COUNT(*)
+            FROM fato_jira_ticket_sprint
+            WHERE planejamento_status IS NULL
+               OR planejamento_status NOT IN (
+                'planejado', 'atravessado', 'fora_da_janela', 'sem_classificacao'
+            )
+        """,
         "orphan_changelog_links": """
             SELECT COUNT(*) FROM jira_sprint_changelog c
             LEFT JOIN dim_ticket_jira t ON t.issue_key = c.issue_key

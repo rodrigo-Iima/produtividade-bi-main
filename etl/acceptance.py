@@ -290,6 +290,12 @@ def _profile() -> dict[str, Any]:
                 WHERE sprint_entrada_at IS NULL OR planejado_no_inicio IS NULL
                 """
             )).scalar_one()),
+            "planning_status_nulls": int(session.execute(text(
+                """
+                SELECT COUNT(*) FROM fato_jira_ticket_sprint
+                WHERE planejamento_status IS NULL
+                """
+            )).scalar_one()),
             "unmapped_statuses": int(session.execute(text(
                 """
                 SELECT COUNT(DISTINCT t.status_original)

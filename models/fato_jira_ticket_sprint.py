@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base
@@ -24,4 +24,10 @@ class FatoJiraTicketSprint(Base):
     )
     planejado_no_inicio: Mapped[Optional[bool]] = mapped_column(
         Boolean, nullable=True
+    )
+    planejamento_status: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True, index=True
+    )
+    planejamento_source: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
     )

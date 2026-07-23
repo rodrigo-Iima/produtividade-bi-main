@@ -27,6 +27,7 @@ class JiraService:
     FIELDS = [
         "summary",
         "status",
+        "issuetype",
         "project",
         "created",
         "updated",
@@ -131,6 +132,70 @@ class JiraService:
         finally:
             session.close()
 
+    def backfill_issue_types(
+        self,
+        projects: list[str] | None = None,
+    ) -> dict[str, int]:
+        """Load Jira's native issue type onto already loaded tickets.
+
+        This is intentionally separate from the regular incremental ETL so
+        existing tickets receive the new dimension without rebuilding their
+        sprint relationships.
+        """
+        if projects is None:
+            projects = ["ZGT", "ZG", "ZGTN", "SRE"]
+
+        project_clause = " OR ".join(f"project = {project}" for project in projects)
+        jql = f"({project_clause}) AND created >= \"2026-01-01\""
+        raw_issues = self.client.search(
+            jql=jql,
+            fields=["key", "issuetype"],
+        )
+
+        session = SessionLocal()
+        counts = {
+            "extracted": len(raw_issues),
+            "matched": 0,
+            "updated": 0,
+            "without_type": 0,
+        }
+        try:
+            for issue in raw_issues:
+                issue_key = issue.get("key")
+                if not issue_key:
+                    continue
+                ticket = session.get(DimTicketJira, issue_key)
+                if ticket is None:
+                    continue
+                counts["matched"] += 1
+                issue_type_id, issue_type_name = self._parse_issue_type(
+                    (issue.get("fields") or {}).get("issuetype")
+                )
+                if issue_type_id is None and issue_type_name is None:
+                    counts["without_type"] += 1
+                    continue
+                if (
+                    ticket.issue_type_id != issue_type_id
+                    or ticket.issue_type_name != issue_type_name
+                ):
+                    ticket.issue_type_id = issue_type_id
+                    ticket.issue_type_name = issue_type_name
+                    counts["updated"] += 1
+
+            session.commit()
+            print(
+                "[JiraETL] Native issue type backfill: "
+                f"{counts['matched']} tickets matched, "
+                f"{counts['updated']} updated, "
+                f"{counts['without_type']} without type"
+            )
+            return counts
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
     def _build_jql(self, projects: list[str], incremental: bool) -> str:
         project_clause = " OR ".join(f"project = {project}" for project in projects)
         parts = [f"({project_clause})", 'created >= "2026-01-01"']
@@ -162,6 +227,7 @@ class JiraService:
         squad_jira = squad_field.get("value") if isinstance(squad_field, dict) else None
         if squad_jira in EXCLUDED_SQUADS:
             return None
+        issue_type_id, issue_type_name = self._parse_issue_type(fields.get("issuetype"))
 
         ticket = DimTicketJira(
             issue_key=issue["key"],
@@ -169,6 +235,8 @@ class JiraService:
             status_original=fields["status"]["name"],
             project_key=fields["project"]["key"],
             project_name=fields["project"]["name"],
+            issue_type_id=issue_type_id,
+            issue_type_name=issue_type_name,
             squad_jira=squad_jira,
             atravessamento_flag=self._parse_crossing_flag(
                 fields.get(JIRA_CROSSING_FIELD)
@@ -328,6 +396,18 @@ class JiraService:
         if isinstance(value, list):
             return value
         return []
+
+    @staticmethod
+    def _parse_issue_type(value) -> tuple[Optional[str], Optional[str]]:
+        """Return Jira's native issue type id and display name."""
+        if not isinstance(value, dict):
+            return None, None
+        issue_type_id = value.get("id")
+        issue_type_name = value.get("name")
+        return (
+            str(issue_type_id) if issue_type_id is not None else None,
+            str(issue_type_name).strip() if issue_type_name else None,
+        )
 
     @staticmethod
     def _parse_crossing_flag(value) -> Optional[bool]:

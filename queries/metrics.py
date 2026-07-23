@@ -300,7 +300,7 @@ def ticket_metrics(filters: TicketFilters | None = None) -> dict[str, Any]:
     """Return Jira ticket totals and sprint-planning efficiency."""
     filters = filters or TicketFilters()
     status_group = _status_group_expression()
-    planned = FatoJiraTicketSprint.planejado_no_inicio.is_(True)
+    planned = FatoJiraTicketSprint.planejamento_status == "planejado"
     completed = status_group == "Concluído"
     with SessionLocal() as session:
         statement = (
@@ -341,7 +341,7 @@ def tickets_by_sprint(filters: TicketFilters | None = None) -> list[dict[str, An
     """Return ticket planning and completion metrics for each sprint."""
     filters = filters or TicketFilters()
     status_group = _status_group_expression()
-    planned = FatoJiraTicketSprint.planejado_no_inicio.is_(True)
+    planned = FatoJiraTicketSprint.planejamento_status == "planejado"
     completed = status_group == "Concluído"
     with SessionLocal() as session:
         statement = (
@@ -496,7 +496,10 @@ def _status_group_expression():
 
 
 def _ticket_conditions(filters: TicketFilters, status_group) -> list[Any]:
-    conditions: list[Any] = _sprint_scope_conditions()
+    conditions: list[Any] = [
+        *_sprint_scope_conditions(),
+        FatoJiraTicketSprint.planejamento_status.in_(("planejado", "atravessado")),
+    ]
     if filters.sprint_id is not None:
         conditions.append(DimSprint.sprint_id == filters.sprint_id)
     if filters.sprint_name is not None:
