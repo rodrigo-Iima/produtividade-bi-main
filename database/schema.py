@@ -13,6 +13,7 @@ from database.migrations.phase12 import ensure_phase12_schema
 from database.migrations.phase13 import ensure_phase13_schema
 from database.migrations.phase14 import ensure_phase14_schema
 from database.migrations.phase15 import ensure_phase15_schema
+from database.migrations.phase16 import ensure_phase16_schema
 
 
 def ensure_schema() -> None:
@@ -27,5 +28,6 @@ def ensure_schema() -> None:
     ensure_phase13_schema(engine)
     ensure_phase14_schema(engine)
     ensure_phase15_schema(engine)
+    ensure_phase16_schema(engine)
     ensure_phase3_views(engine)
     ensure_phase4_schema(engine)
