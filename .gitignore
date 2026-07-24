@@ -1,16 +1,14 @@
 .env
 .env.*
 !.env.example
-deploy/ec2/.env
 
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .runtime/
 .DS_Store
+outputs/
 
 .venv/
 venv/
 env/
-
-*.log

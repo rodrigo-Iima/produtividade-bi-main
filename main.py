@@ -1,157 +1,50 @@
-"""Application entrypoint for the Jira/Clockify -> PostgreSQL pipeline."""
+"""CLI for the Jira/Clockify OKR analysis."""
 
-import sys
-from uuid import uuid4
+from __future__ import annotations
 
-from database.connection import engine
-from database.etl_log import EtlRunLogger
-from database.schema import ensure_schema
-from database.seed import seed_all
-from etl.jira import JiraService
-from etl.clockify import ClockifyService
-from etl.jira_sprint_changelog import run_sprint_changelog_etl
-from etl.jira_sprint_enrichment import run_sprint_enrichment
-from etl.jira_quick_filters import run_jira_quick_filters
-from etl.quality import validate_loaded_data
+import argparse
+import json
+from pathlib import Path
 
-
-def _run_step(name: str, operation, logger: EtlRunLogger | None = None) -> bool:
-    """Run one pipeline step and return whether it completed successfully."""
-    if logger:
-        _safe_log(logger.start, name)
-    try:
-        result = operation()
-        if logger:
-            _safe_log(logger.finish, name, result)
-        print(f"[OK] {name}")
-        return True
-    except Exception as exc:
-        if logger:
-            _safe_log(logger.fail, name, exc)
-        print(f"[ERROR] {name}: {exc}")
-        return False
+from config.settings import (
+    JIRA_ESTIMATE_FIELD,
+    OKR_BUGS_JQL,
+    OKR_TIMEZONE,
+    OKR_YEAR,
+)
+from okr.pipeline import result_to_payload, run_analysis, write_payload
 
 
 def main() -> int:
-    """Run the ETL and always release the SQLAlchemy engine resources."""
-    try:
-        return _run_pipeline()
-    finally:
-        # Always close idle and pooled PostgreSQL connections before the
-        # process exits, whether the ETL is run by cron, systemd, Docker, or
-        # an interactive shell.
-        engine.dispose()
+    parser = argparse.ArgumentParser(
+        description="Relaciona Bugs Jira de 2026 com horas lançadas no Clockify."
+    )
+    parser.add_argument("--year", type=int, default=OKR_YEAR)
+    parser.add_argument("--jql", default=OKR_BUGS_JQL)
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
 
+    result = run_analysis(
+        jql=args.jql,
+        target_year=args.year,
+        timezone_name=OKR_TIMEZONE,
+        estimate_field=JIRA_ESTIMATE_FIELD,
+    )
+    payload = result_to_payload(
+        result,
+        jql=args.jql,
+        target_year=args.year,
+        timezone_name=OKR_TIMEZONE,
+        estimate_field=JIRA_ESTIMATE_FIELD,
+    )
 
-def _run_pipeline() -> int:
-    print("=" * 60)
-    print("STARTING PRODUTIVIDADE ETL RUN")
-    print("=" * 60)
-
-    failures: list[str] = []
-    run_id = str(uuid4())
-
-    if not _run_step("Preparação do schema", ensure_schema):
-        failures.append("Preparação do schema")
-        return _finish_run(failures, None)
-
-    logger = EtlRunLogger(run_id)
-    _safe_log(logger.start, "pipeline")
-
-    if not _run_step("Carga das dimensões de referência", seed_all, logger):
-        failures.append("Carga das dimensões de referência")
-        return _finish_run(failures, logger)
-
-    jira_etl = JiraService()
-    jira_result: dict = {}
-
-    def run_jira():
-        jira_result.update(jira_etl.run(incremental=True) or {})
-        return jira_result
-
-    if not _run_step(
-        "Extração e carga do Jira",
-        run_jira,
-        logger,
-    ):
-        failures.append("Extração e carga do Jira")
-        # Changelog, enriquecimento e cruzamento Clockify/Jira dependem do Jira.
-        return _finish_run(failures, logger)
-
-    if not _run_step(
-        "Extração do changelog de sprint",
-        lambda: run_sprint_changelog_etl(
-            incremental=True,
-            max_workers=8,
-            issue_keys=jira_result.get("issue_keys", []),
-        ),
-        logger,
-    ):
-        failures.append("Extração do changelog de sprint")
-        return _finish_run(failures, logger)
-
-    if not _run_step("Enriquecimento das sprints Jira", run_sprint_enrichment, logger):
-        failures.append("Enriquecimento das sprints Jira")
-        return _finish_run(failures, logger)
-
-    if not _run_step(
-        "Mapeamento Sprint × Squad pelos quick filters Jira",
-        run_jira_quick_filters,
-        logger,
-    ):
-        failures.append("Mapeamento Sprint × Squad pelos quick filters Jira")
-        return _finish_run(failures, logger)
-
-    # Clockify depende das sprints e tickets carregados acima para construir os
-    # relacionamentos de atribuição. A etapa ainda pode falhar sem apagar a
-    # carga anterior, mas a execução deve ser reportada como incompleta.
-    clockify_etl = ClockifyService()
-    if not _run_step(
-        "Extração e carga do Clockify",
-        lambda: clockify_etl.run(incremental=True),
-        logger,
-    ):
-        failures.append("Extração e carga do Clockify")
-
-    if not failures and not _run_step(
-        "Validação da carga transformada",
-        validate_loaded_data,
-        logger,
-    ):
-        failures.append("Validação da carga transformada")
-
-    return _finish_run(failures, logger)
-
-
-def _finish_run(failures: list[str], logger: EtlRunLogger | None) -> int:
-    if logger:
-        if failures:
-            _safe_log(
-                logger.fail,
-                "pipeline",
-                RuntimeError("; ".join(failures)),
-            )
-        else:
-            _safe_log(logger.finish, "pipeline")
-    print("=" * 60)
-    if failures:
-        print("ETL RUN FINISHED WITH ERRORS")
-        print("Etapas com erro: " + ", ".join(failures))
-        print("=" * 60)
-        return 1
-
-    print("ETL RUN FINISHED SUCCESSFULLY")
-    print("=" * 60)
+    if args.output:
+        write_payload(payload, args.output)
+        print(f"Resultado salvo em {args.output}")
+    else:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0
 
 
-def _safe_log(operation, *args) -> None:
-    """Never turn an audit write failure into a data-load failure."""
-    try:
-        operation(*args)
-    except Exception as exc:
-        print(f"[ETLLog] Audit write failed: {exc}")
-
-
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
