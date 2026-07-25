@@ -16,7 +16,7 @@ from okr.snapshot_store import SnapshotStore
 class handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         try:
-            payload = SnapshotStore().read_latest()
+            payload = SnapshotStore(request_headers=self.headers).read_latest()
             if payload is None:
                 self.send_response(404)
                 body = {"error": "snapshot_not_found"}

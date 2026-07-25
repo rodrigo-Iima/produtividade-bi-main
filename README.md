@@ -79,12 +79,15 @@ consumida pela view visual em `view/`.
 O endpoint `/api/cron` executa o mesmo pipeline e grava um snapshot compacto no
 Vercel Blob. O endpoint `/api/snapshot` entrega o snapshot mais recente para a
 view. O agendamento está configurado para `0 10 * * 5` em UTC, equivalente a
-sexta-feira às 07:00 em `America/Sao_Paulo`.
+sexta-feira às 07:00 em `America/Sao_Paulo`. O ETL permanece em Python, e a
+persistência é delegada internamente a `api/blob.js`, que usa o SDK oficial
+`@vercel/blob` e o OIDC do Vercel.
 
 No projeto Vercel, configure as credenciais do Jira e do Clockify, além de:
 
-- Blob conectado ao projeto: as conexões novas usam OIDC automaticamente. Para
-  um store legado, informe `BLOB_READ_WRITE_TOKEN`;
+- Blob conectado ao projeto: as conexões novas usam OIDC automaticamente. O
+  projeto não precisa de `BLOB_READ_WRITE_TOKEN` quando o store estiver em OIDC;
+  para um store legado, essa variável ainda pode ser informada;
 - `CRON_SECRET`: segredo aleatório com pelo menos 16 caracteres.
 
 Depois do primeiro deploy, execute o endpoint `/api/cron` uma vez com o

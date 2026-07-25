@@ -64,7 +64,10 @@ class handler(BaseHTTPRequestHandler):
                 estimate_field=JIRA_ESTIMATE_FIELD,
                 as_of_date=as_of_date,
             )
-            pathname = SnapshotStore().write(payload, as_of_date=as_of_date)
+            pathname = SnapshotStore(request_headers=self.headers).write(
+                payload,
+                as_of_date=as_of_date,
+            )
             _send_json(
                 self,
                 200,

@@ -25,7 +25,7 @@ def _send_json(
 class handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         try:
-            payload = SnapshotStore().read_latest()
+            payload = SnapshotStore(request_headers=self.headers).read_latest()
             if payload is None:
                 _send_json(self, 404, {"error": "snapshot_not_found"})
                 return
