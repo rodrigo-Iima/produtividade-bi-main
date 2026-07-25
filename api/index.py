@@ -10,14 +10,11 @@ from __future__ import annotations
 import json
 from http.server import BaseHTTPRequestHandler
 
-from vercel.headers import set_headers
-
 from okr.snapshot_store import SnapshotStore
 
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
-        set_headers(dict(self.headers.items()))
         try:
             payload = SnapshotStore().read_latest()
             if payload is None:

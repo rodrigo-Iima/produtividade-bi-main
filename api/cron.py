@@ -7,8 +7,6 @@ import json
 import os
 from http.server import BaseHTTPRequestHandler
 
-from vercel.headers import set_headers
-
 from config.settings import (
     JIRA_ESTIMATE_FIELD,
     OKR_TIMEZONE,
@@ -44,7 +42,6 @@ def _send_json(
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
-        set_headers(dict(self.headers.items()))
         if not _authorized(self):
             _send_json(self, 401, {"error": "unauthorized"})
             return
