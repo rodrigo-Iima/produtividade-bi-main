@@ -34,7 +34,7 @@
   "functions": {
     "api/*.py": {
       "maxDuration": 300,
-      "excludeFiles": "{tests/**,outputs/**,.venv/**,view/**,**/*.test.py,**/test_*.py}"
+      "excludeFiles": "{tests/**,outputs/**,.venv/**,**/*.test.py,**/test_*.py}"
     },
     "api/blob.js": {
       "maxDuration": 30

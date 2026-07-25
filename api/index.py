@@ -9,10 +9,48 @@ from __future__ import annotations
 
 import json
 from http.server import BaseHTTPRequestHandler
+from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from api.cron import run_cron
 from okr.snapshot_store import SnapshotStore
+
+
+VIEW_ROOT = Path(__file__).resolve().parent.parent / "view"
+VIEW_ASSETS = {
+    "/view/": ("index.html", "text/html; charset=utf-8"),
+    "/view/index.html": ("index.html", "text/html; charset=utf-8"),
+    "/view/styles.css": ("styles.css", "text/css; charset=utf-8"),
+    "/view/app.js": ("app.js", "application/javascript; charset=utf-8"),
+}
+
+
+def _serve_view_asset(
+    request: BaseHTTPRequestHandler,
+    path: str,
+    *,
+    send_body: bool = True,
+) -> bool:
+    if path == "/view":
+        request.send_response(307)
+        request.send_header("Location", "/view/")
+        request.end_headers()
+        return True
+
+    asset = VIEW_ASSETS.get(path)
+    if asset is None:
+        return False
+
+    filename, content_type = asset
+    content = (VIEW_ROOT / filename).read_bytes()
+    request.send_response(200)
+    request.send_header("Content-Type", content_type)
+    request.send_header("Cache-Control", "no-store, max-age=0")
+    request.send_header("Content-Length", str(len(content)))
+    request.end_headers()
+    if send_body:
+        request.wfile.write(content)
+    return True
 
 
 class handler(BaseHTTPRequestHandler):
@@ -20,6 +58,14 @@ class handler(BaseHTTPRequestHandler):
         parsed_url = urlsplit(self.path)
         route = parse_qs(parsed_url.query).get("route", [None])[0]
         normalized_path = parsed_url.path.rstrip("/") or "/"
+
+        try:
+            if _serve_view_asset(self, normalized_path):
+                return
+        except FileNotFoundError:
+            self.send_response(404)
+            self.end_headers()
+            return
 
         if route == "cron" or normalized_path in {"/api/cron", "/api/cron.py"}:
             run_cron(self)
@@ -48,6 +94,19 @@ class handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+
+    def do_HEAD(self) -> None:
+        parsed_url = urlsplit(self.path)
+        normalized_path = parsed_url.path.rstrip("/") or "/"
+        try:
+            if _serve_view_asset(self, normalized_path, send_body=False):
+                return
+        except FileNotFoundError:
+            self.send_response(404)
+            self.end_headers()
+            return
+        self.send_response(405)
+        self.end_headers()
 
     def do_POST(self) -> None:
         self.do_GET()
