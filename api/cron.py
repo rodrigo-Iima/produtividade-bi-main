@@ -40,47 +40,53 @@ def _send_json(
     request.wfile.write(body)
 
 
+def run_cron(request: BaseHTTPRequestHandler) -> None:
+    """Run the ETL for both the dedicated and default Python entrypoints."""
+
+    if not _authorized(request):
+        _send_json(request, 401, {"error": "unauthorized"})
+        return
+
+    try:
+        as_of_date = execution_date()
+        jql = build_okr_bugs_jql(as_of_date)
+        result = run_analysis(
+            jql=jql,
+            target_year=OKR_YEAR,
+            timezone_name=OKR_TIMEZONE,
+            estimate_field=JIRA_ESTIMATE_FIELD,
+            as_of_date=as_of_date,
+        )
+        payload = result_to_dashboard_payload(
+            result,
+            jql=jql,
+            target_year=OKR_YEAR,
+            timezone_name=OKR_TIMEZONE,
+            estimate_field=JIRA_ESTIMATE_FIELD,
+            as_of_date=as_of_date,
+        )
+        pathname = SnapshotStore(request_headers=request.headers).write(
+            payload,
+            as_of_date=as_of_date,
+        )
+        _send_json(
+            request,
+            200,
+            {
+                "status": "ok",
+                "snapshot": pathname,
+                "tickets": len(payload["tickets_with_clockify"]),
+                "months": len(payload["monthly"]),
+            },
+        )
+    except Exception as error:  # pragma: no cover - exercised in Vercel logs
+        print(f"[cron] ETL failed: {error}")
+        _send_json(request, 500, {"error": "etl_failed"})
+
+
 class handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
-        if not _authorized(self):
-            _send_json(self, 401, {"error": "unauthorized"})
-            return
-
-        try:
-            as_of_date = execution_date()
-            jql = build_okr_bugs_jql(as_of_date)
-            result = run_analysis(
-                jql=jql,
-                target_year=OKR_YEAR,
-                timezone_name=OKR_TIMEZONE,
-                estimate_field=JIRA_ESTIMATE_FIELD,
-                as_of_date=as_of_date,
-            )
-            payload = result_to_dashboard_payload(
-                result,
-                jql=jql,
-                target_year=OKR_YEAR,
-                timezone_name=OKR_TIMEZONE,
-                estimate_field=JIRA_ESTIMATE_FIELD,
-                as_of_date=as_of_date,
-            )
-            pathname = SnapshotStore(request_headers=self.headers).write(
-                payload,
-                as_of_date=as_of_date,
-            )
-            _send_json(
-                self,
-                200,
-                {
-                    "status": "ok",
-                    "snapshot": pathname,
-                    "tickets": len(payload["tickets_with_clockify"]),
-                    "months": len(payload["monthly"]),
-                },
-            )
-        except Exception as error:  # pragma: no cover - exercised in Vercel logs
-            print(f"[cron] ETL failed: {error}")
-            _send_json(self, 500, {"error": "etl_failed"})
+        run_cron(self)
 
     def do_POST(self) -> None:
         self.do_GET()

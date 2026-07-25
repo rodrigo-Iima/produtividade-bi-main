@@ -7,6 +7,24 @@
       "permanent": false
     }
   ],
+  "rewrites": [
+    {
+      "source": "/api/cron",
+      "destination": "/api/cron.py"
+    },
+    {
+      "source": "/api/snapshot",
+      "destination": "/api/snapshot.py"
+    },
+    {
+      "source": "/api/blob",
+      "destination": "/api/blob.js"
+    },
+    {
+      "source": "/api",
+      "destination": "/api/index.py"
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron",
