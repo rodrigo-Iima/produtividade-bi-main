@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Check-in semanal da OKR de tempo de resolução de Bugs."
+    />
+    <title>OKR · Tempo de resolução</title>
+    <link rel="stylesheet" href="./styles.css?v=okr-20260725" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <a class="brand" href="./">OKR <span>/</span> BUG TIME</a>
+        <div class="snapshot" id="snapshot-label">Carregando snapshot</div>
+      </header>
+
+      <section class="intro" aria-labelledby="page-title">
+        <div class="eyebrow">CHECK-IN SEMANAL · 2026</div>
+        <h1 id="page-title">Tempo de resolução de Bugs</h1>
+      </section>
+
+      <section class="metric-grid" aria-label="Indicadores principais">
+        <article class="metric-card">
+          <div class="metric-label">Média real · último mês</div>
+          <div class="metric-value" id="latest-actual">—</div>
+          <div class="metric-detail" id="latest-actual-detail">—</div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-label">Média estimada</div>
+          <div class="metric-value" id="latest-estimate">—</div>
+          <div class="metric-detail" id="latest-estimate-detail">—</div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-label">Variação média</div>
+          <div class="metric-value" id="latest-variation">—</div>
+          <div class="metric-detail">gasto menos estimado</div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-label">Cobertura</div>
+          <div class="metric-value" id="coverage-value">—</div>
+          <div class="metric-detail" id="coverage-detail">—</div>
+        </article>
+      </section>
+
+      <section class="section-block trend-section" aria-labelledby="trend-title">
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">VISÃO MENSAL</div>
+            <h2 id="trend-title">O tempo está diminuindo?</h2>
+          </div>
+          <div class="chart-legend" aria-label="Legenda do gráfico">
+            <span><i class="legend-line legend-line--actual"></i> Gasto</span>
+            <span><i class="legend-line legend-line--estimate"></i> Estimado</span>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="monthly-chart" aria-label="Comparação mensal entre tempo gasto e estimado"></canvas>
+        </div>
+      </section>
+
+      <section class="section-block monthly-section" aria-labelledby="monthly-title">
+        <div class="section-heading section-heading--compact">
+          <div>
+            <div class="eyebrow">CHECK-INS</div>
+            <h2 id="monthly-title">Resumo mensal</h2>
+          </div>
+          <div class="section-caption">Mês de criação do Bug no Jira</div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table monthly-table">
+            <thead>
+              <tr>
+                <th scope="col">Mês</th>
+                <th scope="col">Bugs</th>
+                <th scope="col">Cobertura</th>
+                <th scope="col">Estimado</th>
+                <th scope="col">Gasto</th>
+                <th scope="col">Variação</th>
+                <th scope="col">Razão</th>
+              </tr>
+            </thead>
+            <tbody id="monthly-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section-block tickets-section" aria-labelledby="tickets-title">
+        <div class="section-heading section-heading--compact tickets-heading">
+          <div>
+            <div class="eyebrow">DETALHAMENTO</div>
+            <h2 id="tickets-title">Tickets com horas mapeadas</h2>
+          </div>
+          <div class="section-caption" id="ticket-count">—</div>
+        </div>
+
+        <div class="filters" aria-label="Filtros da tabela de tickets">
+          <label class="search-field">
+            <span class="sr-only">Buscar ticket</span>
+            <input id="ticket-search" type="search" placeholder="Buscar chave ou resumo" autocomplete="off" />
+          </label>
+          <label>
+            <span class="sr-only">Filtrar por mês</span>
+            <div class="select-wrap">
+              <select id="month-filter">
+                <option value="all">Todos os meses</option>
+              </select>
+            </div>
+          </label>
+          <label>
+            <span class="sr-only">Filtrar por fonte</span>
+            <div class="select-wrap">
+              <select id="source-filter">
+                <option value="all">Todas as fontes</option>
+                <option value="jira">Jira</option>
+                <option value="clockify">Clockify</option>
+              </select>
+            </div>
+          </label>
+          <label>
+            <span class="sr-only">Ordenar tabela</span>
+            <div class="select-wrap">
+              <select id="sort-select">
+                <option value="created_desc">Mais recentes</option>
+                <option value="variation_desc">Maior variação</option>
+                <option value="variation_asc">Menor variação</option>
+                <option value="spent_desc">Maior tempo gasto</option>
+                <option value="estimate_desc">Maior estimativa</option>
+                <option value="issue_asc">Chave do ticket</option>
+              </select>
+            </div>
+          </label>
+        </div>
+
+        <div class="table-scroll ticket-table-wrap">
+          <table class="data-table ticket-table">
+            <thead>
+              <tr>
+                <th scope="col">Ticket</th>
+                <th scope="col">Mês</th>
+                <th scope="col">Status</th>
+                <th scope="col">Estimado</th>
+                <th scope="col">Gasto</th>
+                <th scope="col">Variação</th>
+                <th scope="col">Fonte</th>
+              </tr>
+            </thead>
+            <tbody id="tickets-body"></tbody>
+          </table>
+          <div class="empty-state" id="empty-state" hidden>
+            Nenhum ticket corresponde aos filtros atuais.
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer-note">
+        <span id="data-rule">Tempo gasto = maior valor entre Jira e Clockify.</span>
+        <span id="data-source">—</span>
+      </footer>
+    </main>
+
+    <div class="load-state" id="load-state" role="status">
+      <div class="load-card">
+        <div class="eyebrow">CARREGANDO</div>
+        <p>Buscando o último snapshot da OKR…</p>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+    <script type="module" src="./app.js?v=okr-20260725"></script>
+  </body>
+</html>

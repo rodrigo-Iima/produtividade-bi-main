@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/view/",
+      "permanent": false
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "0 10 * * 5"
+    }
+  ],
+  "functions": {
+    "api/*.py": {
+      "maxDuration": 300,
+      "excludeFiles": "{tests/**,outputs/**,.venv/**,view/**,**/*.test.py,**/test_*.py}"
+    }
+  }
+}
