@@ -83,7 +83,8 @@ sexta-feira às 07:00 em `America/Sao_Paulo`.
 
 No projeto Vercel, configure as credenciais do Jira e do Clockify, além de:
 
-- `BLOB_READ_WRITE_TOKEN`: criado ao conectar um Blob privado ao projeto;
+- Blob conectado ao projeto: as conexões novas usam OIDC automaticamente. Para
+  um store legado, informe `BLOB_READ_WRITE_TOKEN`;
 - `CRON_SECRET`: segredo aleatório com pelo menos 16 caracteres.
 
 Depois do primeiro deploy, execute o endpoint `/api/cron` uma vez com o
