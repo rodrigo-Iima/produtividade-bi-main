@@ -60,7 +60,7 @@ class handler(BaseHTTPRequestHandler):
         normalized_path = parsed_url.path.rstrip("/") or "/"
 
         try:
-            if _serve_view_asset(self, normalized_path):
+            if _serve_view_asset(self, parsed_url.path):
                 return
         except FileNotFoundError:
             self.send_response(404)
@@ -99,7 +99,7 @@ class handler(BaseHTTPRequestHandler):
         parsed_url = urlsplit(self.path)
         normalized_path = parsed_url.path.rstrip("/") or "/"
         try:
-            if _serve_view_asset(self, normalized_path, send_body=False):
+            if _serve_view_asset(self, parsed_url.path, send_body=False):
                 return
         except FileNotFoundError:
             self.send_response(404)
