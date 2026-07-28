@@ -5,81 +5,99 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Check-in semanal da OKR de tempo de resolução de Bugs."
+      content="Acompanhamento da evolução do tempo de desenvolvimento em Bugs durante a OKR."
     />
-    <title>OKR · Tempo de resolução</title>
-    <link rel="stylesheet" href="./styles.css?v=okr-20260725" />
+    <title>OKR · Tempo de desenvolvimento em Bugs</title>
+    <link rel="stylesheet" href="./styles.css?v=okr-20260727" />
   </head>
   <body>
     <main class="shell">
       <header class="topbar">
-        <a class="brand" href="./">OKR <span>/</span> BUG TIME</a>
+        <a class="brand" href="./">OKR <span>/</span> BUG DEV TIME</a>
         <div class="snapshot" id="snapshot-label">Carregando snapshot</div>
       </header>
 
       <section class="intro" aria-labelledby="page-title">
-        <div class="eyebrow">CHECK-IN SEMANAL · 2026</div>
-        <h1 id="page-title">Tempo de resolução de Bugs</h1>
+        <div class="eyebrow">Q3 2026 · IA NO DESENVOLVIMENTO</div>
+        <h1 id="page-title">Tempo de desenvolvimento em Bugs</h1>
+        <p>
+          Compara o desempenho atual com a base histórica de janeiro a maio.
+          Junho não participa da medição.
+        </p>
       </section>
 
-      <section class="metric-grid" aria-label="Indicadores principais">
+      <section class="metric-grid" aria-label="KPIs atuais comparados à base histórica">
         <article class="metric-card">
-          <div class="metric-label">Média real · último mês</div>
-          <div class="metric-value" id="latest-actual">—</div>
-          <div class="metric-detail" id="latest-actual-detail">—</div>
+          <div class="metric-label">Gasto real médio</div>
+          <div class="metric-value" id="actual-current">—</div>
+          <div class="metric-trend" id="actual-trend">—</div>
+          <div class="metric-detail" id="actual-base">—</div>
         </article>
         <article class="metric-card">
-          <div class="metric-label">Média estimada</div>
-          <div class="metric-value" id="latest-estimate">—</div>
-          <div class="metric-detail" id="latest-estimate-detail">—</div>
+          <div class="metric-label">Estimativa média</div>
+          <div class="metric-value" id="estimate-current">—</div>
+          <div class="metric-trend metric-trend--neutral" id="estimate-trend">—</div>
+          <div class="metric-detail" id="estimate-base">—</div>
         </article>
         <article class="metric-card">
           <div class="metric-label">Variação média</div>
-          <div class="metric-value" id="latest-variation">—</div>
-          <div class="metric-detail">gasto menos estimado</div>
+          <div class="metric-value" id="variation-current">—</div>
+          <div class="metric-trend" id="variation-trend">—</div>
+          <div class="metric-detail" id="variation-base">—</div>
         </article>
         <article class="metric-card">
-          <div class="metric-label">Cobertura</div>
-          <div class="metric-value" id="coverage-value">—</div>
-          <div class="metric-detail" id="coverage-detail">—</div>
+          <div class="metric-label">Cobertura Dev</div>
+          <div class="metric-value" id="coverage-current">—</div>
+          <div class="metric-trend" id="coverage-trend">—</div>
+          <div class="metric-detail" id="coverage-base">—</div>
         </article>
       </section>
+
+      <div class="measurement-note" id="measurement-note">
+        <span>Atual: tickets criados desde 01/07</span>
+        <span>Base: tickets criados de 01/01 a 31/05</span>
+        <span>Tempo: lançamentos Clockify com tag Dev</span>
+      </div>
 
       <section class="section-block trend-section" aria-labelledby="trend-title">
         <div class="section-heading">
           <div>
-            <div class="eyebrow">VISÃO MENSAL</div>
-            <h2 id="trend-title">O tempo está diminuindo?</h2>
+            <div class="eyebrow">EVOLUÇÃO MENSAL</div>
+            <h2 id="trend-title">Tempo médio por mês de criação</h2>
+            <p class="section-subtitle" id="trend-subtitle">
+              Horas por Bug com lançamentos Dev. Junho está fora da medição.
+            </p>
           </div>
           <div class="chart-legend" aria-label="Legenda do gráfico">
-            <span><i class="legend-line legend-line--actual"></i> Gasto</span>
-            <span><i class="legend-line legend-line--estimate"></i> Estimado</span>
+            <span><i class="legend-bar legend-bar--actual"></i> Gasto real</span>
+            <span><i class="legend-bar legend-bar--estimate"></i> Estimado</span>
+            <span><i class="legend-line legend-line--baseline"></i> Base real</span>
           </div>
         </div>
         <div class="chart-wrap">
-          <canvas id="monthly-chart" aria-label="Comparação mensal entre tempo gasto e estimado"></canvas>
+          <canvas id="monthly-chart" aria-label="Comparação mensal entre tempo Dev gasto e estimado"></canvas>
         </div>
       </section>
 
       <section class="section-block monthly-section" aria-labelledby="monthly-title">
         <div class="section-heading section-heading--compact">
           <div>
-            <div class="eyebrow">CHECK-INS</div>
+            <div class="eyebrow">QUALIDADE DA MEDIÇÃO</div>
             <h2 id="monthly-title">Resumo mensal</h2>
           </div>
-          <div class="section-caption">Mês de criação do Bug no Jira</div>
+          <div class="section-caption">Médias por ticket · junho excluído</div>
         </div>
         <div class="table-scroll">
           <table class="data-table monthly-table">
             <thead>
               <tr>
                 <th scope="col">Mês</th>
-                <th scope="col">Bugs</th>
+                <th scope="col">Período</th>
+                <th scope="col">Bugs Dev / Jira</th>
                 <th scope="col">Cobertura</th>
                 <th scope="col">Estimado</th>
-                <th scope="col">Gasto</th>
+                <th scope="col">Gasto real</th>
                 <th scope="col">Variação</th>
-                <th scope="col">Razão</th>
               </tr>
             </thead>
             <tbody id="monthly-body"></tbody>
@@ -91,7 +109,7 @@
         <div class="section-heading section-heading--compact tickets-heading">
           <div>
             <div class="eyebrow">DETALHAMENTO</div>
-            <h2 id="tickets-title">Tickets com horas mapeadas</h2>
+            <h2 id="tickets-title">Tickets com lançamentos Dev</h2>
           </div>
           <div class="section-caption" id="ticket-count">—</div>
         </div>
@@ -102,20 +120,20 @@
             <input id="ticket-search" type="search" placeholder="Buscar chave ou resumo" autocomplete="off" />
           </label>
           <label>
-            <span class="sr-only">Filtrar por mês</span>
+            <span class="sr-only">Filtrar por período</span>
             <div class="select-wrap">
-              <select id="month-filter">
-                <option value="all">Todos os meses</option>
+              <select id="period-filter">
+                <option value="current">Período atual</option>
+                <option value="baseline">Base jan–mai</option>
+                <option value="all">Base + atual</option>
               </select>
             </div>
           </label>
           <label>
-            <span class="sr-only">Filtrar por fonte</span>
+            <span class="sr-only">Filtrar por mês</span>
             <div class="select-wrap">
-              <select id="source-filter">
-                <option value="all">Todas as fontes</option>
-                <option value="jira">Jira</option>
-                <option value="clockify">Clockify</option>
+              <select id="month-filter">
+                <option value="all">Todos os meses</option>
               </select>
             </div>
           </label>
@@ -126,7 +144,7 @@
                 <option value="created_desc">Mais recentes</option>
                 <option value="variation_desc">Maior variação</option>
                 <option value="variation_asc">Menor variação</option>
-                <option value="spent_desc">Maior tempo gasto</option>
+                <option value="spent_desc">Maior tempo Dev</option>
                 <option value="estimate_desc">Maior estimativa</option>
                 <option value="issue_asc">Chave do ticket</option>
               </select>
@@ -139,12 +157,12 @@
             <thead>
               <tr>
                 <th scope="col">Ticket</th>
-                <th scope="col">Mês</th>
+                <th scope="col">Criação</th>
                 <th scope="col">Status</th>
                 <th scope="col">Estimado</th>
-                <th scope="col">Gasto</th>
+                <th scope="col">Tempo Dev</th>
                 <th scope="col">Variação</th>
-                <th scope="col">Fonte</th>
+                <th scope="col">Lançamentos</th>
               </tr>
             </thead>
             <tbody id="tickets-body"></tbody>
@@ -156,7 +174,7 @@
       </section>
 
       <footer class="footer-note">
-        <span id="data-rule">Tempo gasto = maior valor entre Jira e Clockify.</span>
+        <span id="data-rule">Gasto real = horas Clockify com tag Dev · Cobertura = Bugs com Dev / Bugs Jira do período.</span>
         <span id="data-source">—</span>
       </footer>
     </main>
@@ -169,6 +187,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
-    <script type="module" src="./app.js?v=okr-20260725"></script>
+    <script type="module" src="./app.js?v=okr-20260727"></script>
   </body>
 </html>

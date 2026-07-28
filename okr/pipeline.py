@@ -12,6 +12,7 @@ from clients.clockify_client import ClockifyClient
 from clients.jira_client import JiraClient
 from config.settings import (
     CLOCKIFY_API_KEY,
+    CLOCKIFY_DEV_TAG,
     CLOCKIFY_PAGE_SIZE,
     CLOCKIFY_WORKSPACE_ID,
     JIRA_EMAIL,
@@ -28,8 +29,10 @@ from okr.domain import (
     ClockifyEntry,
     JiraBug,
     MonthlyMetric,
+    PeriodMetric,
     TicketClockifyRow,
     build_monthly_metrics,
+    build_period_metrics,
     build_ticket_clockify_table,
     match_entries_to_bugs,
     parse_clockify_entries,
@@ -45,6 +48,7 @@ class AnalysisResult:
     matches: tuple[BugTimeMatch, ...]
     tickets_with_clockify: tuple[TicketClockifyRow, ...]
     monthly_metrics: tuple[MonthlyMetric, ...]
+    period_metrics: tuple[PeriodMetric, ...]
 
 
 @dataclass(frozen=True)
@@ -74,6 +78,22 @@ def run_analysis(
         timezone_name=timezone_name,
         as_of_date=effective_as_of_date,
     )
+    return analyze_inputs(
+        inputs,
+        target_year=target_year,
+        timezone_name=timezone_name,
+        estimate_field=estimate_field,
+    )
+
+
+def analyze_inputs(
+    inputs: RawInputs,
+    *,
+    target_year: int,
+    timezone_name: str,
+    estimate_field: str,
+) -> AnalysisResult:
+    """Analyze already-fetched inputs without making network requests."""
     bugs = parse_jira_bugs(
         inputs.jira_issues,
         target_year=target_year,
@@ -84,6 +104,7 @@ def run_analysis(
         inputs.clockify_entries,
         target_year=target_year,
         timezone_name=timezone_name,
+        required_tag_name=CLOCKIFY_DEV_TAG,
     )
     matches = match_entries_to_bugs(bugs, entries)
     monthly_metrics = build_monthly_metrics(
@@ -92,12 +113,20 @@ def run_analysis(
         timezone_name=timezone_name,
     )
     tickets_with_clockify = build_ticket_clockify_table(bugs, matches)
+    period_metrics = build_period_metrics(
+        bugs,
+        matches,
+        target_year=target_year,
+        as_of_date=inputs.as_of_date,
+        timezone_name=timezone_name,
+    )
     return AnalysisResult(
         bugs=tuple(bugs),
         entries=tuple(entries),
         matches=tuple(matches),
         tickets_with_clockify=tuple(tickets_with_clockify),
         monthly_metrics=tuple(monthly_metrics),
+        period_metrics=tuple(period_metrics),
     )
 
 
@@ -187,9 +216,15 @@ def result_to_payload(
             "jql": jql,
             "estimate_field": estimate_field,
             "multi_issue_entry_allocation": "equal_share",
-            "actual_time_rule": "max(clockify_allocated_hours, jira_timespent_hours)",
+            "clockify_required_tag": CLOCKIFY_DEV_TAG,
+            "actual_time_rule": "sum(clockify_allocated_hours) for entries tagged Dev",
             "variation_rule": "spent_hours - estimate_hours; positive means above estimate",
-            "actual_average_denominator": "Bugs with at least one matched Clockify entry",
+            "actual_average_denominator": "Bugs with at least one matched Dev-tagged Clockify entry",
+            "periods": {
+                "baseline": f"{target_year}-01-01 through {target_year}-05-31",
+                "excluded": f"{target_year}-06-01 through {target_year}-06-30",
+                "current": f"{target_year}-07-01 through as_of_date",
+            },
         },
         "bugs": [
             {
@@ -209,6 +244,7 @@ def result_to_payload(
                 "duration_hours": round(entry.duration_hours, 4),
                 "description": entry.description,
                 "task_name": entry.task_name,
+                "tag_names": list(entry.tag_names),
                 "issue_sources": dict(entry.issue_sources),
             }
             for entry in result.entries
@@ -243,6 +279,7 @@ def result_to_payload(
             for row in result.tickets_with_clockify
         ],
         "monthly": [metric.__dict__ for metric in result.monthly_metrics],
+        "periods": [metric.__dict__ for metric in result.period_metrics],
     }
 
 
@@ -269,6 +306,7 @@ def result_to_dashboard_payload(
         "bugs": payload["bugs"],
         "tickets_with_clockify": payload["tickets_with_clockify"],
         "monthly": payload["monthly"],
+        "periods": payload["periods"],
     }
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 import math
 import re
 from typing import Any, Iterable
@@ -31,6 +31,7 @@ class ClockifyEntry:
     duration_hours: float
     description: str
     task_name: str
+    tag_names: tuple[str, ...]
     issue_sources: tuple[tuple[str, str], ...]
 
     @property
@@ -59,6 +60,23 @@ class MonthlyMetric:
     avg_actual_hours: float | None
     avg_delta_hours: float | None
     actual_to_estimate_ratio: float | None
+
+
+@dataclass(frozen=True)
+class PeriodMetric:
+    period: str
+    label: str
+    start_date: str
+    end_date: str
+    bugs_in_jira: int
+    bugs_with_estimate: int
+    bugs_with_clockify: int
+    bugs_with_variation: int
+    coverage_pct: float
+    matched_entries: int
+    avg_estimate_hours: float | None
+    avg_actual_hours: float | None
+    avg_delta_hours: float | None
 
 
 @dataclass(frozen=True)
@@ -129,8 +147,9 @@ def parse_clockify_entries(
     *,
     target_year: int,
     timezone_name: str,
+    required_tag_name: str | None = None,
 ) -> list[ClockifyEntry]:
-    """Normalize detailed Clockify report rows and extract Jira keys."""
+    """Normalize Clockify rows, optionally keeping one exact tag by name."""
     timezone = ZoneInfo(timezone_name)
     normalized: list[ClockifyEntry] = []
     for raw in entries:
@@ -147,6 +166,12 @@ def parse_clockify_entries(
         if local_date.year != target_year or duration_seconds <= 0:
             continue
 
+        tag_names = _tag_names(raw)
+        if required_tag_name and not any(
+            tag.casefold() == required_tag_name.casefold() for tag in tag_names
+        ):
+            continue
+
         description = str(raw.get("description") or "")
         task_name = _task_name(raw)
         sources = extract_issue_sources(description, task_name)
@@ -157,6 +182,7 @@ def parse_clockify_entries(
                 duration_hours=duration_seconds / 3600,
                 description=description,
                 task_name=task_name,
+                tag_names=tag_names,
                 issue_sources=tuple(sorted(sources.items())),
             )
         )
@@ -242,6 +268,9 @@ def build_monthly_metrics(
             },
         )
         group["bugs_in_jira"] += 1
+        if _is_valid_hours(bug.estimate_hours):
+            group["estimate"].append(bug.estimate_hours)
+
         ticket = tickets_by_key.get(bug.issue_key)
         if ticket is None:
             continue
@@ -250,7 +279,6 @@ def build_monthly_metrics(
         group["matched_entries"] += ticket.clockify_entry_count
         group["actual"].append(ticket.spent_hours)
         if _is_valid_hours(bug.estimate_hours):
-            group["estimate"].append(bug.estimate_hours)
             group["paired_actual"].append(ticket.spent_hours)
             group["paired_estimate"].append(bug.estimate_hours)
             group["variation"].append(ticket.variation_hours)
@@ -290,6 +318,92 @@ def build_monthly_metrics(
     return metrics
 
 
+def build_period_metrics(
+    bugs: Iterable[JiraBug],
+    matches: Iterable[BugTimeMatch],
+    *,
+    target_year: int,
+    as_of_date: date,
+    timezone_name: str,
+) -> list[PeriodMetric]:
+    """Build ticket-weighted baseline and current-period KPI cohorts."""
+    bug_list = list(bugs)
+    tickets = build_ticket_clockify_table(bug_list, matches)
+    timezone = ZoneInfo(timezone_name)
+    definitions = (
+        (
+            "baseline",
+            "Base jan–mai",
+            date(target_year, 1, 1),
+            date(target_year, 6, 1),
+        ),
+        (
+            "current",
+            "Atual desde 01/07",
+            date(target_year, 7, 1),
+            as_of_date + timedelta(days=1),
+        ),
+    )
+    return [
+        _build_period_metric(
+            period=period,
+            label=label,
+            start_date=start_date,
+            end_date_exclusive=end_date,
+            bugs=bug_list,
+            tickets=tickets,
+            timezone=timezone,
+        )
+        for period, label, start_date, end_date in definitions
+    ]
+
+
+def _build_period_metric(
+    *,
+    period: str,
+    label: str,
+    start_date: date,
+    end_date_exclusive: date,
+    bugs: list[JiraBug],
+    tickets: list[TicketClockifyRow],
+    timezone: ZoneInfo,
+) -> PeriodMetric:
+    period_bugs = [
+        bug
+        for bug in bugs
+        if start_date <= bug.created_at.astimezone(timezone).date() < end_date_exclusive
+    ]
+    bug_keys = {bug.issue_key for bug in period_bugs}
+    period_tickets = [ticket for ticket in tickets if ticket.issue_key in bug_keys]
+    estimate_values = [
+        bug.estimate_hours
+        for bug in period_bugs
+        if _is_valid_hours(bug.estimate_hours)
+    ]
+    actual_values = [ticket.spent_hours for ticket in period_tickets]
+    variation_values = [
+        ticket.variation_hours
+        for ticket in period_tickets
+        if ticket.variation_hours is not None
+    ]
+    end_date = max(start_date, end_date_exclusive - timedelta(days=1))
+    return PeriodMetric(
+        period=period,
+        label=label,
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat(),
+        bugs_in_jira=len(period_bugs),
+        bugs_with_estimate=len(estimate_values),
+        bugs_with_clockify=len(period_tickets),
+        bugs_with_variation=len(variation_values),
+        coverage_pct=_percentage(len(period_tickets), len(period_bugs)),
+        matched_entries=sum(ticket.clockify_entry_count for ticket in period_tickets),
+        avg_estimate_hours=_rounded(_average(estimate_values)),
+        avg_actual_hours=_rounded(_average(actual_values)),
+        avg_delta_hours=_rounded(_average(variation_values)),
+    )
+
+
 def build_ticket_clockify_table(
     bugs: Iterable[JiraBug],
     matches: Iterable[BugTimeMatch],
@@ -313,10 +427,7 @@ def build_ticket_clockify_table(
         if not valid_matches:
             continue
         clockify_hours = sum(match.allocated_hours for match in valid_matches)
-        spent_hours, spent_source = _spent_hours(
-            clockify_hours=clockify_hours,
-            jira_hours=bug.jira_logged_hours,
-        )
+        spent_hours = round(clockify_hours, 4)
         rows.append(
             TicketClockifyRow(
                 issue_key=bug.issue_key,
@@ -327,7 +438,7 @@ def build_ticket_clockify_table(
                 clockify_actual_hours=round(clockify_hours, 4),
                 jira_logged_hours=bug.jira_logged_hours,
                 spent_hours=spent_hours,
-                spent_source=spent_source,
+                spent_source="clockify_dev",
                 variation_hours=_variation_hours(
                     spent_hours=spent_hours,
                     estimate_hours=bug.estimate_hours,
@@ -363,11 +474,10 @@ def _validate_ticket_clockify_rows(rows: Iterable[TicketClockifyRow]) -> None:
         ):
             raise ValueError(f"Timespent Jira inválido para {row.issue_key}")
 
-        expected_spent, expected_source = _spent_hours(
-            clockify_hours=row.clockify_actual_hours,
-            jira_hours=row.jira_logged_hours,
-        )
-        if row.spent_hours != expected_spent or row.spent_source != expected_source:
+        if (
+            row.spent_hours != row.clockify_actual_hours
+            or row.spent_source != "clockify_dev"
+        ):
             raise ValueError(f"Fonte de tempo inconsistente para {row.issue_key}")
 
         expected_variation = _variation_hours(
@@ -391,7 +501,7 @@ def _estimate_hours(fields: dict[str, Any], estimate_field: str) -> float | None
         hours = float(value) / 3600
     except (TypeError, ValueError):
         return None
-    return hours if _is_valid_hours(hours) else None
+    return hours if _is_valid_hours(hours, allow_zero=False) else None
 
 
 def _jira_logged_hours(fields: dict[str, Any]) -> float | None:
@@ -411,14 +521,6 @@ def _jira_logged_hours(fields: dict[str, Any]) -> float | None:
     except (TypeError, ValueError):
         return None
     return hours if _is_valid_hours(hours) else None
-
-
-def _spent_hours(*, clockify_hours: float, jira_hours: float | None) -> tuple[float, str]:
-    """Use Jira only when it records strictly more time than Clockify."""
-    clockify_value = round(clockify_hours, 4)
-    if _is_valid_hours(jira_hours) and jira_hours > clockify_value:
-        return round(jira_hours, 4), "jira"
-    return clockify_value, "clockify"
 
 
 def _variation_hours(*, spent_hours: float, estimate_hours: float | None) -> float | None:
@@ -442,6 +544,18 @@ def _task_name(raw: dict[str, Any]) -> str:
     if isinstance(value, dict):
         value = value.get("name")
     return str(value or "")
+
+
+def _tag_names(raw: dict[str, Any]) -> tuple[str, ...]:
+    values = raw.get("tags") or raw.get("tagNames") or []
+    if isinstance(values, str):
+        values = [values]
+    names: set[str] = set()
+    for value in values:
+        name = value.get("name") if isinstance(value, dict) else value
+        if name and str(name).strip():
+            names.add(str(name).strip())
+    return tuple(sorted(names, key=str.casefold))
 
 
 def _average(values: list[float]) -> float | None:

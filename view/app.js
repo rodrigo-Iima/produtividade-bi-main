@@ -19,6 +19,13 @@ const monthFormat = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "UTC",
 });
 
+const dateFormat = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "America/Sao_Paulo",
+});
+
 const $ = (selector) => document.querySelector(selector);
 
 function getDataUrl() {
@@ -49,23 +56,24 @@ function formatSignedHours(value) {
   if (!Number.isFinite(value)) return "—";
   if (Math.abs(value) < 0.005) return "0,0h";
   const sign = value > 0 ? "+" : "−";
-  return `${sign}${formatHours(Math.abs(value), 1)}`;
+  return `${sign}${formatHours(Math.abs(value))}`;
+}
+
+function formatPercent(value) {
+  return Number.isFinite(value) ? `${numberFormat.format(value)}%` : "—";
 }
 
 function formatMonth(value) {
   if (!value) return "—";
   const [year, month] = value.split("-");
-  return monthFormat.format(new Date(Date.UTC(Number(year), Number(month) - 1, 1)));
+  return monthFormat
+    .format(new Date(Date.UTC(Number(year), Number(month) - 1, 1)))
+    .replace(".", "");
 }
 
 function formatDate(value) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date(value));
+  return dateFormat.format(new Date(value));
 }
 
 function escapeHtml(value) {
@@ -87,64 +95,181 @@ function setText(selector, value) {
   if (element) element.textContent = value;
 }
 
-function latestMonth() {
-  return [...state.data.monthly].sort((a, b) => a.month.localeCompare(b.month)).at(-1);
+function periodMetric(period) {
+  return state.data.periods.find((item) => item.period === period);
+}
+
+function ticketPeriod(ticket) {
+  const month = ticket.created_at.slice(0, 7);
+  if (month <= `${state.data.definition.year}-05`) return "baseline";
+  if (month >= `${state.data.definition.year}-07`) return "current";
+  return "excluded";
+}
+
+function trendTone(element, favorable) {
+  element.classList.remove("is-favorable", "is-unfavorable");
+  if (favorable === true) element.classList.add("is-favorable");
+  if (favorable === false) element.classList.add("is-unfavorable");
+}
+
+function renderPercentTrend(selector, current, baseline, favorableDirection = null) {
+  const element = $(selector);
+  if (!element || !Number.isFinite(current) || !Number.isFinite(baseline) || baseline === 0) {
+    if (element) element.textContent = "Sem comparação";
+    return;
+  }
+  const delta = ((current - baseline) / Math.abs(baseline)) * 100;
+  const arrow = delta > 0.05 ? "↑" : delta < -0.05 ? "↓" : "→";
+  element.textContent = `${arrow} ${numberFormat.format(Math.abs(delta))}% vs base`;
+  const favorable = favorableDirection === "lower"
+    ? delta < 0
+    : favorableDirection === "higher"
+      ? delta > 0
+      : null;
+  trendTone(element, favorable);
+}
+
+function renderHoursTrend(selector, current, baseline, favorableDirection = null) {
+  const element = $(selector);
+  if (!element || !Number.isFinite(current) || !Number.isFinite(baseline)) {
+    if (element) element.textContent = "Sem comparação";
+    return;
+  }
+  const delta = current - baseline;
+  const arrow = delta > 0.005 ? "↑" : delta < -0.005 ? "↓" : "→";
+  element.textContent = `${arrow} ${formatHours(Math.abs(delta))} vs base`;
+  const favorable = favorableDirection === "lower"
+    ? delta < 0
+    : favorableDirection === "higher"
+      ? delta > 0
+      : null;
+  trendTone(element, favorable);
 }
 
 function renderSummary() {
-  const latest = latestMonth();
-  if (!latest) return;
+  const baseline = periodMetric("baseline");
+  const current = periodMetric("current");
+  if (!baseline || !current) {
+    throw new Error("Snapshot sem os períodos baseline/current. Execute o pipeline atualizado.");
+  }
 
-  const coverage = Number.isFinite(latest.coverage_pct) ? `${numberFormat.format(latest.coverage_pct)}%` : "—";
-  setText("#latest-actual", formatHours(latest.avg_actual_hours));
-  setText("#latest-actual-detail", `${formatMonth(latest.month)} · ${latest.bugs_with_clockify} de ${latest.bugs_in_jira} Bugs`);
-  setText("#latest-estimate", formatHours(latest.avg_estimate_hours));
-  setText("#latest-estimate-detail", `${formatMonth(latest.month)} · média das estimativas válidas`);
-  setText("#latest-variation", formatSignedHours(latest.avg_delta_hours));
-  setText("#coverage-value", coverage);
-  setText("#coverage-detail", `${latest.bugs_with_clockify} tickets com horas mapeadas`);
+  setText("#actual-current", formatHours(current.avg_actual_hours));
+  setText(
+    "#actual-base",
+    `Base: ${formatHours(baseline.avg_actual_hours)} · ${baseline.bugs_with_clockify} Bugs`,
+  );
+  renderPercentTrend(
+    "#actual-trend",
+    current.avg_actual_hours,
+    baseline.avg_actual_hours,
+    "lower",
+  );
+
+  setText("#estimate-current", formatHours(current.avg_estimate_hours));
+  setText(
+    "#estimate-base",
+    `Base: ${formatHours(baseline.avg_estimate_hours)} · ${baseline.bugs_with_estimate} Bugs`,
+  );
+  renderPercentTrend(
+    "#estimate-trend",
+    current.avg_estimate_hours,
+    baseline.avg_estimate_hours,
+  );
+
+  setText("#variation-current", formatSignedHours(current.avg_delta_hours));
+  setText(
+    "#variation-base",
+    `Base: ${formatSignedHours(baseline.avg_delta_hours)} · gasto menos estimado`,
+  );
+  renderHoursTrend(
+    "#variation-trend",
+    current.avg_delta_hours,
+    baseline.avg_delta_hours,
+    "lower",
+  );
+
+  setText("#coverage-current", formatPercent(current.coverage_pct));
+  setText(
+    "#coverage-base",
+    `Base: ${formatPercent(baseline.coverage_pct)} · ${baseline.bugs_with_clockify}/${baseline.bugs_in_jira} Bugs`,
+  );
+  const coverageDelta = current.coverage_pct - baseline.coverage_pct;
+  const coverageTrend = $("#coverage-trend");
+  coverageTrend.textContent = `${coverageDelta > 0 ? "↑" : coverageDelta < 0 ? "↓" : "→"} ${numberFormat.format(Math.abs(coverageDelta))} p.p. vs base`;
+  trendTone(coverageTrend, coverageDelta > 0 ? true : coverageDelta < 0 ? false : null);
 
   const asOf = state.data.definition?.as_of_date;
+  const currentBugs = state.data.bugs.filter((bug) => ticketPeriod(bug) === "current");
+  const concludedCurrent = currentBugs.filter((bug) => bug.status === "Concluído").length;
   setText("#snapshot-label", asOf ? `SNAPSHOT · ${formatDate(`${asOf}T12:00:00Z`)}` : "SNAPSHOT");
+  setText(
+    "#measurement-note",
+    `Atual: ${current.bugs_with_clockify}/${current.bugs_in_jira} Bugs com Dev e ${concludedCurrent}/${current.bugs_in_jira} concluídos · Base: ${baseline.bugs_with_clockify}/${baseline.bugs_in_jira} com Dev · Junho excluído`,
+  );
+  setText(
+    "#trend-subtitle",
+    `Horas Clockify com tag Dev por Bug · linha de base real: ${formatHours(baseline.avg_actual_hours)} · junho excluído`,
+  );
+  setText(
+    "#data-source",
+    `${current.matched_entries + baseline.matched_entries} lançamentos Dev mapeados · atualização ${formatDate(`${asOf}T12:00:00Z`)}`,
+  );
+}
 
-  const jiraTotal = state.data.bugs?.length ?? 0;
-  const mappedTotal = state.data.tickets_with_clockify?.length ?? 0;
-  setText("#data-source", `${mappedTotal} de ${jiraTotal} tickets com Clockify · atualização ${formatDate(`${asOf}T12:00:00Z`)}`);
+function measurementMonths() {
+  const year = state.data.definition.year;
+  const months = [...state.data.monthly]
+    .sort((a, b) => a.month.localeCompare(b.month))
+    .filter((item) => item.month <= `${year}-05` || item.month >= `${year}-07`);
+  const juneIndex = months.findIndex((item) => item.month >= `${year}-07`);
+  const june = { month: `${year}-06`, excluded: true };
+  if (juneIndex === -1) return [...months, june];
+  return [...months.slice(0, juneIndex), june, ...months.slice(juneIndex)];
 }
 
 function renderChart() {
   const canvas = $("#monthly-chart");
   if (!canvas || !window.Chart) return;
 
-  const months = [...state.data.monthly].sort((a, b) => a.month.localeCompare(b.month));
+  const baseline = periodMetric("baseline");
+  const months = measurementMonths();
   state.chart?.destroy();
   state.chart = new window.Chart(canvas, {
-    type: "line",
+    type: "bar",
     data: {
-      labels: months.map((item) => formatMonth(item.month)),
+      labels: months.map((item) => item.excluded ? "jun. · fora" : formatMonth(item.month)),
       datasets: [
         {
-          label: "Gasto",
-          data: months.map((item) => item.avg_actual_hours),
-          borderColor: "#161616",
-          backgroundColor: "#161616",
-          borderWidth: 2,
-          pointRadius: 3,
-          pointHoverRadius: 5,
-          tension: 0.25,
-          spanGaps: false,
+          type: "bar",
+          label: "Gasto real",
+          data: months.map((item) => item.excluded ? null : item.avg_actual_hours),
+          backgroundColor: "#2746c7",
+          borderColor: "#2746c7",
+          borderWidth: 1,
+          borderRadius: 3,
+          maxBarThickness: 32,
         },
         {
+          type: "bar",
           label: "Estimado",
-          data: months.map((item) => item.avg_estimate_hours),
-          borderColor: "#9a9a94",
-          backgroundColor: "#9a9a94",
+          data: months.map((item) => item.excluded ? null : item.avg_estimate_hours),
+          backgroundColor: "#e5e5df",
+          borderColor: "#a4a49d",
+          borderWidth: 1,
+          borderRadius: 3,
+          maxBarThickness: 32,
+        },
+        {
+          type: "line",
+          label: "Base real",
+          data: months.map(() => baseline.avg_actual_hours),
+          borderColor: "#52524e",
+          backgroundColor: "#52524e",
           borderWidth: 1.5,
           borderDash: [5, 5],
-          pointRadius: 2.5,
-          pointHoverRadius: 4,
-          tension: 0.25,
-          spanGaps: false,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          spanGaps: true,
         },
       ],
     },
@@ -159,7 +284,7 @@ function renderChart() {
           titleColor: "#fff",
           bodyColor: "#fff",
           padding: 12,
-          displayColors: false,
+          usePointStyle: true,
           callbacks: {
             label: (context) => `${context.dataset.label}: ${formatHours(context.raw)}`,
           },
@@ -169,11 +294,14 @@ function renderChart() {
         x: {
           grid: { display: false },
           border: { display: false },
-          ticks: { color: "#73736e", font: { family: "Geist Sans", size: 11 } },
+          ticks: {
+            color: (context) => months[context.index]?.excluded ? "#aaa9a2" : "#686862",
+            font: { family: "Geist Sans", size: 11 },
+          },
         },
         y: {
           beginAtZero: true,
-          grid: { color: "#deded8" },
+          grid: { color: "#e2e2dc" },
           border: { display: false },
           ticks: {
             color: "#73736e",
@@ -189,38 +317,54 @@ function renderChart() {
 
 function renderMonthlyTable() {
   const body = $("#monthly-body");
-  const months = [...state.data.monthly].sort((a, b) => b.month.localeCompare(a.month));
-  body.innerHTML = months.map((item) => `
-    <tr>
-      <td>${formatMonth(item.month)}</td>
-      <td>${item.bugs_with_clockify} / ${item.bugs_in_jira}</td>
-      <td>${Number.isFinite(item.coverage_pct) ? `${numberFormat.format(item.coverage_pct)}%` : "—"}</td>
-      <td>${formatHours(item.avg_estimate_hours)}</td>
-      <td>${formatHours(item.avg_actual_hours)}</td>
-      <td>${formatSignedHours(item.avg_delta_hours)}</td>
-      <td>${Number.isFinite(item.actual_to_estimate_ratio) ? `${numberFormat.format(item.actual_to_estimate_ratio)}×` : "—"}</td>
-    </tr>
-  `).join("");
+  const months = measurementMonths().reverse();
+  body.innerHTML = months.map((item) => {
+    if (item.excluded) {
+      return `
+        <tr class="excluded-row">
+          <td>${formatMonth(item.month)}</td>
+          <td colspan="6">Fora da medição da OKR</td>
+        </tr>
+      `;
+    }
+    const period = item.month <= `${state.data.definition.year}-05` ? "Base" : "Atual";
+    return `
+      <tr>
+        <td>${formatMonth(item.month)}</td>
+        <td><span class="period-pill period-pill--${period.toLowerCase()}">${period}</span></td>
+        <td>${item.bugs_with_clockify} / ${item.bugs_in_jira}</td>
+        <td>${formatPercent(item.coverage_pct)}</td>
+        <td>${formatHours(item.avg_estimate_hours)}</td>
+        <td>${formatHours(item.avg_actual_hours)}</td>
+        <td>${formatSignedHours(item.avg_delta_hours)}</td>
+      </tr>
+    `;
+  }).join("");
 }
 
 function populateMonthFilter() {
   const select = $("#month-filter");
-  const months = [...new Set(state.tickets.map((ticket) => ticket.created_at.slice(0, 7)))].sort().reverse();
-  select.insertAdjacentHTML("beforeend", months.map((month) => `<option value="${month}">${formatMonth(month)}</option>`).join(""));
+  const months = [...new Set(state.tickets.map((ticket) => ticket.created_at.slice(0, 7)))]
+    .sort()
+    .reverse();
+  select.insertAdjacentHTML(
+    "beforeend",
+    months.map((month) => `<option value="${month}">${formatMonth(month)}</option>`).join(""),
+  );
 }
 
 function filteredTickets() {
   const query = $("#ticket-search").value.trim().toLowerCase();
+  const period = $("#period-filter").value;
   const month = $("#month-filter").value;
-  const source = $("#source-filter").value;
   const sort = $("#sort-select").value;
 
   const filtered = state.tickets.filter((ticket) => {
     const searchable = `${ticket.issue_key} ${ticket.summary}`.toLowerCase();
     const matchesQuery = !query || searchable.includes(query);
+    const matchesPeriod = period === "all" || ticketPeriod(ticket) === period;
     const matchesMonth = month === "all" || ticket.created_at.slice(0, 7) === month;
-    const matchesSource = source === "all" || ticket.spent_source === source;
-    return matchesQuery && matchesMonth && matchesSource;
+    return matchesQuery && matchesPeriod && matchesMonth;
   });
 
   const sorted = [...filtered];
@@ -239,7 +383,7 @@ function renderTickets() {
   const body = $("#tickets-body");
   const emptyState = $("#empty-state");
   const tickets = filteredTickets();
-  setText("#ticket-count", `${tickets.length} de ${state.tickets.length} tickets`);
+  setText("#ticket-count", `${tickets.length} de ${state.tickets.length} tickets medidos`);
   emptyState.hidden = tickets.length > 0;
   body.innerHTML = tickets.map((ticket) => `
     <tr>
@@ -249,28 +393,33 @@ function renderTickets() {
           <span class="ticket-summary">${safeText(ticket.summary)}</span>
         </div>
       </td>
-      <td>${formatMonth(ticket.created_at.slice(0, 7))}</td>
+      <td>${formatDate(ticket.created_at)}</td>
       <td><span class="status" title="${safeText(ticket.status, "Sem status")}">${safeText(ticket.status, "Sem status")}</span></td>
       <td>${formatHours(ticket.estimate_hours, 2)}</td>
       <td>${formatHours(ticket.spent_hours, 2)}</td>
       <td>${formatSignedHours(ticket.variation_hours)}</td>
-      <td><span class="source-pill">${safeText(ticket.spent_source)}</span></td>
+      <td>${ticket.clockify_entry_count}</td>
     </tr>
   `).join("");
 }
 
 function bindFilters() {
-  ["#ticket-search", "#month-filter", "#source-filter", "#sort-select"].forEach((selector) => {
+  ["#ticket-search", "#period-filter", "#month-filter", "#sort-select"].forEach((selector) => {
     $(selector).addEventListener("input", renderTickets);
     $(selector).addEventListener("change", renderTickets);
+  });
+  $("#period-filter").addEventListener("change", () => {
+    $("#month-filter").value = "all";
+    renderTickets();
   });
 }
 
 function showError(error) {
   const loadState = $("#load-state");
   loadState.classList.add("is-error");
-  loadState.querySelector(".eyebrow").textContent = "SNAPSHOT NÃO ENCONTRADO";
-  loadState.querySelector("p").textContent = `Execute o pipeline antes de abrir a view ou informe um arquivo pela URL (?data=...).`;
+  loadState.querySelector(".eyebrow").textContent = "SNAPSHOT INCOMPATÍVEL";
+  loadState.querySelector("p").textContent = error.message
+    || "Execute o pipeline atualizado antes de abrir a view.";
   console.error(error);
 }
 
@@ -279,7 +428,11 @@ async function init() {
     const response = await fetch(getDataUrl(), { cache: "no-store" });
     if (!response.ok) throw new Error(`Snapshot indisponível: ${response.status}`);
     state.data = await response.json();
-    state.tickets = [...(state.data.tickets_with_clockify ?? [])];
+    if (state.data.definition?.clockify_required_tag !== "Dev") {
+      throw new Error("O snapshot ainda não usa o filtro Clockify Dev. Execute o pipeline atualizado.");
+    }
+    state.tickets = [...(state.data.tickets_with_clockify ?? [])]
+      .filter((ticket) => ticketPeriod(ticket) !== "excluded");
     renderSummary();
     renderChart();
     renderMonthlyTable();

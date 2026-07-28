@@ -25,6 +25,7 @@ OKR_YEAR = int(_env("OKR_YEAR", "2026") or "2026")
 OKR_TIMEZONE = _env("OKR_TIMEZONE", "America/Sao_Paulo") or "America/Sao_Paulo"
 JIRA_ESTIMATE_FIELD = _env("JIRA_ESTIMATE_FIELD", "timeoriginalestimate") or "timeoriginalestimate"
 CLOCKIFY_PAGE_SIZE = int(_env("CLOCKIFY_PAGE_SIZE", "1000") or "1000")
+CLOCKIFY_DEV_TAG = _env("CLOCKIFY_DEV_TAG", "Dev") or "Dev"
 
 
 def execution_date() -> date:
