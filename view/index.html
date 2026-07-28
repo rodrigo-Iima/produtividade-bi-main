@@ -8,7 +8,7 @@
       content="Acompanhamento da evolução do tempo de desenvolvimento em Bugs durante a OKR."
     />
     <title>OKR · Tempo de desenvolvimento em Bugs</title>
-    <link rel="stylesheet" href="./styles.css?v=okr-20260727" />
+    <link rel="stylesheet" href="./styles.css?v=okr-20260727b" />
   </head>
   <body>
     <main class="shell">
@@ -22,7 +22,7 @@
         <h1 id="page-title">Tempo de desenvolvimento em Bugs</h1>
         <p>
           Compara o desempenho atual com a base histórica de janeiro a maio.
-          Junho não participa da medição.
+          Junho aparece nos visuais, mas não participa dos KPIs.
         </p>
       </section>
 
@@ -56,7 +56,7 @@
       <div class="measurement-note" id="measurement-note">
         <span>Atual: tickets criados desde 01/07</span>
         <span>Base: tickets criados de 01/01 a 31/05</span>
-        <span>Tempo: lançamentos Clockify com tag Dev</span>
+        <span>Junho: visível e fora dos KPIs</span>
       </div>
 
       <section class="section-block trend-section" aria-labelledby="trend-title">
@@ -69,8 +69,8 @@
             </p>
           </div>
           <div class="chart-legend" aria-label="Legenda do gráfico">
-            <span><i class="legend-bar legend-bar--actual"></i> Gasto real</span>
-            <span><i class="legend-bar legend-bar--estimate"></i> Estimado</span>
+            <span><i class="legend-line legend-line--actual"></i> Gasto real</span>
+            <span><i class="legend-line legend-line--estimate"></i> Estimado</span>
             <span><i class="legend-line legend-line--baseline"></i> Base real</span>
           </div>
         </div>
@@ -85,7 +85,7 @@
             <div class="eyebrow">QUALIDADE DA MEDIÇÃO</div>
             <h2 id="monthly-title">Resumo mensal</h2>
           </div>
-          <div class="section-caption">Médias por ticket · junho excluído</div>
+          <div class="section-caption">Médias por ticket · junho fora dos KPIs</div>
         </div>
         <div class="table-scroll">
           <table class="data-table monthly-table">
@@ -187,6 +187,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
-    <script type="module" src="./app.js?v=okr-20260727"></script>
+    <script type="module" src="./app.js?v=okr-20260727b"></script>
   </body>
 </html>

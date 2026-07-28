@@ -204,11 +204,11 @@ function renderSummary() {
   setText("#snapshot-label", asOf ? `SNAPSHOT · ${formatDate(`${asOf}T12:00:00Z`)}` : "SNAPSHOT");
   setText(
     "#measurement-note",
-    `Atual: ${current.bugs_with_clockify}/${current.bugs_in_jira} Bugs com Dev e ${concludedCurrent}/${current.bugs_in_jira} concluídos · Base: ${baseline.bugs_with_clockify}/${baseline.bugs_in_jira} com Dev · Junho excluído`,
+    `Atual: ${current.bugs_with_clockify}/${current.bugs_in_jira} Bugs com Dev e ${concludedCurrent}/${current.bugs_in_jira} concluídos · Base: ${baseline.bugs_with_clockify}/${baseline.bugs_in_jira} com Dev · Junho fora dos KPIs`,
   );
   setText(
     "#trend-subtitle",
-    `Horas Clockify com tag Dev por Bug · linha de base real: ${formatHours(baseline.avg_actual_hours)} · junho excluído`,
+    `Horas Clockify com tag Dev por Bug · linha de base real: ${formatHours(baseline.avg_actual_hours)} · junho visível e fora dos KPIs`,
   );
   setText(
     "#data-source",
@@ -217,14 +217,7 @@ function renderSummary() {
 }
 
 function measurementMonths() {
-  const year = state.data.definition.year;
-  const months = [...state.data.monthly]
-    .sort((a, b) => a.month.localeCompare(b.month))
-    .filter((item) => item.month <= `${year}-05` || item.month >= `${year}-07`);
-  const juneIndex = months.findIndex((item) => item.month >= `${year}-07`);
-  const june = { month: `${year}-06`, excluded: true };
-  if (juneIndex === -1) return [...months, june];
-  return [...months.slice(0, juneIndex), june, ...months.slice(juneIndex)];
+  return [...state.data.monthly].sort((a, b) => a.month.localeCompare(b.month));
 }
 
 function renderChart() {
@@ -235,32 +228,39 @@ function renderChart() {
   const months = measurementMonths();
   state.chart?.destroy();
   state.chart = new window.Chart(canvas, {
-    type: "bar",
+    type: "line",
     data: {
-      labels: months.map((item) => item.excluded ? "jun. · fora" : formatMonth(item.month)),
+      labels: months.map((item) => formatMonth(item.month)),
       datasets: [
         {
-          type: "bar",
-          label: "Gasto real",
-          data: months.map((item) => item.excluded ? null : item.avg_actual_hours),
-          backgroundColor: "#2746c7",
-          borderColor: "#2746c7",
-          borderWidth: 1,
-          borderRadius: 3,
-          maxBarThickness: 32,
-        },
-        {
-          type: "bar",
           label: "Estimado",
-          data: months.map((item) => item.excluded ? null : item.avg_estimate_hours),
-          backgroundColor: "#e5e5df",
-          borderColor: "#a4a49d",
-          borderWidth: 1,
-          borderRadius: 3,
-          maxBarThickness: 32,
+          data: months.map((item) => item.avg_estimate_hours),
+          borderColor: "#8d8d87",
+          backgroundColor: "#ffffff",
+          borderWidth: 1.75,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          pointBackgroundColor: "#ffffff",
+          pointBorderColor: "#8d8d87",
+          pointBorderWidth: 1.5,
+          tension: 0.25,
+          spanGaps: false,
         },
         {
-          type: "line",
+          label: "Gasto real",
+          data: months.map((item) => item.avg_actual_hours),
+          borderColor: "#2746c7",
+          backgroundColor: "#2746c7",
+          borderWidth: 2.5,
+          pointRadius: 3.5,
+          pointHoverRadius: 5.5,
+          pointBackgroundColor: "#2746c7",
+          pointBorderColor: "#ffffff",
+          pointBorderWidth: 1.25,
+          tension: 0.25,
+          spanGaps: false,
+        },
+        {
           label: "Base real",
           data: months.map(() => baseline.avg_actual_hours),
           borderColor: "#52524e",
@@ -269,7 +269,7 @@ function renderChart() {
           borderDash: [5, 5],
           pointRadius: 0,
           pointHoverRadius: 0,
-          spanGaps: true,
+          tension: 0,
         },
       ],
     },
@@ -295,7 +295,7 @@ function renderChart() {
           grid: { display: false },
           border: { display: false },
           ticks: {
-            color: (context) => months[context.index]?.excluded ? "#aaa9a2" : "#686862",
+            color: "#686862",
             font: { family: "Geist Sans", size: 11 },
           },
         },
@@ -319,19 +319,20 @@ function renderMonthlyTable() {
   const body = $("#monthly-body");
   const months = measurementMonths().reverse();
   body.innerHTML = months.map((item) => {
-    if (item.excluded) {
-      return `
-        <tr class="excluded-row">
-          <td>${formatMonth(item.month)}</td>
-          <td colspan="6">Fora da medição da OKR</td>
-        </tr>
-      `;
-    }
-    const period = item.month <= `${state.data.definition.year}-05` ? "Base" : "Atual";
+    const period = item.month <= `${state.data.definition.year}-05`
+      ? "Base"
+      : item.month >= `${state.data.definition.year}-07`
+        ? "Atual"
+        : "Fora KPI";
+    const periodClass = period === "Atual"
+      ? "atual"
+      : period === "Base"
+        ? "base"
+        : "excluded";
     return `
       <tr>
         <td>${formatMonth(item.month)}</td>
-        <td><span class="period-pill period-pill--${period.toLowerCase()}">${period}</span></td>
+        <td><span class="period-pill period-pill--${periodClass}">${period}</span></td>
         <td>${item.bugs_with_clockify} / ${item.bugs_in_jira}</td>
         <td>${formatPercent(item.coverage_pct)}</td>
         <td>${formatHours(item.avg_estimate_hours)}</td>
