@@ -6,24 +6,28 @@ import argparse
 import json
 from typing import Any
 
-from etl.acceptance import write_acceptance_report
-
-from .runner import run_local
-from .status import get_status, healthcheck
-
 
 def main() -> int:
     parser = _build_parser()
     args = parser.parse_args()
 
     if args.command == "run":
+        from .runner import run_local
+
         return run_local(
             retries=args.retries,
             retry_delay=args.retry_delay,
             run_acceptance=not args.skip_acceptance,
         )
 
+    if args.command == "migrate":
+        from .migration import run_migrations
+
+        return run_migrations()
+
     if args.command == "acceptance":
+        from etl.acceptance import write_acceptance_report
+
         json_path, markdown_path, report = write_acceptance_report()
         print(json_path)
         print(markdown_path)
@@ -31,11 +35,15 @@ def main() -> int:
         return 0 if report["status"] != "not_accepted" else 1
 
     if args.command == "status":
+        from .status import get_status
+
         report = get_status(args.limit)
         _print_report(report, args.json)
         return 0
 
     if args.command == "healthcheck":
+        from .status import healthcheck
+
         report = healthcheck()
         _print_report(report, args.json)
         return 0 if report["healthy"] else 1
@@ -58,6 +66,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--skip-acceptance",
         action="store_true",
         help="não executa a validação após a carga",
+    )
+
+    subparsers.add_parser(
+        "migrate", help="aplica somente as migrations do PostgreSQL"
     )
 
     subparsers.add_parser(

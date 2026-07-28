@@ -1,0 +1,23 @@
+name: produtividade-bi
+
+x-etl-common: &etl-common
+  image: ${ETL_IMAGE:-produtividade-etl:local}
+  env_file:
+    - ${RUNTIME_ENV_FILE:-runtime.env}
+  init: true
+  restart: "no"
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  migrate:
+    <<: *etl-common
+    command: ["migrate"]
+    profiles: ["tools"]
+
+  etl:
+    <<: *etl-common
+    command: ["run"]
+    environment:
+      ETL_AUTO_MIGRATE: "false"
+    profiles: ["jobs"]

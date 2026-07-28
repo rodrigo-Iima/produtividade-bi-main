@@ -3,6 +3,7 @@
 import sys
 from uuid import uuid4
 
+from config.settings import ETL_AUTO_MIGRATE
 from database.connection import engine
 from database.etl_log import EtlRunLogger
 from database.schema import ensure_schema
@@ -51,9 +52,12 @@ def _run_pipeline() -> int:
     failures: list[str] = []
     run_id = str(uuid4())
 
-    if not _run_step("Preparação do schema", ensure_schema):
-        failures.append("Preparação do schema")
-        return _finish_run(failures, None)
+    if ETL_AUTO_MIGRATE:
+        if not _run_step("Preparação do schema", ensure_schema):
+            failures.append("Preparação do schema")
+            return _finish_run(failures, None)
+    else:
+        print("[SKIP] Preparação do schema (ETL_AUTO_MIGRATE=false)")
 
     logger = EtlRunLogger(run_id)
     _safe_log(logger.start, "pipeline")

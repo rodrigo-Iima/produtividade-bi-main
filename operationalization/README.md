@@ -12,6 +12,10 @@ Na raiz do projeto:
 # Executa ETL incremental e validação pós-carga
 ./.venv/bin/python -m operationalization run
 
+# Aplica todas as migrations, incluindo as views SQL do dashboard. Use como
+# etapa separada antes de executar o ETL regular em ambiente containerizado.
+./.venv/bin/python -m operationalization migrate
+
 # Permite uma nova tentativa em caso de falha
 ./.venv/bin/python -m operationalization run --retries 1 --retry-delay 30
 
@@ -29,6 +33,10 @@ Na raiz do projeto:
 O runner usa `.runtime/etl.lock` para impedir duas execuções simultâneas no
 mesmo host. Os resultados continuam registrados em `etl_run_log`, e o aceite
 pós-carga gera os relatórios em `validation/`.
+
+Por compatibilidade, `ETL_AUTO_MIGRATE=true` continua sendo o padrão. Em
+ambientes corporativos, execute `migrate` com uma identidade autorizada a DDL
+e configure o job regular com `ETL_AUTO_MIGRATE=false`.
 
 ## Agendamento por cron
 

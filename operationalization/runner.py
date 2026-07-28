@@ -5,8 +5,6 @@ from __future__ import annotations
 import time
 from typing import Callable
 
-from etl.acceptance import write_acceptance_report
-
 from .lock import LocalRunLock
 
 
@@ -36,6 +34,8 @@ def run_local(
                 return exit_code
 
             try:
+                from etl.acceptance import write_acceptance_report
+
                 json_path, markdown_path, report = write_acceptance_report()
             except Exception as exc:
                 print(f"[Operationalization] Falha no aceite pós-carga: {exc}")
