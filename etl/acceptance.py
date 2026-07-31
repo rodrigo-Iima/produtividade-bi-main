@@ -17,7 +17,7 @@ from queries import hours_by_sprint, ticket_metrics, total_hours
 
 
 ACCEPTANCE_VERSION = 1
-OUTPUT_DIR = Path("validation")
+OUTPUT_DIR = Path(".runtime/validation")
 
 
 def run_acceptance() -> dict[str, Any]:

@@ -32,7 +32,8 @@ Na raiz do projeto:
 
 O runner usa `.runtime/etl.lock` para impedir duas execuções simultâneas no
 mesmo host. Os resultados continuam registrados em `etl_run_log`, e o aceite
-pós-carga gera os relatórios em `validation/`.
+pós-carga gera os relatórios em `.runtime/validation/`, fora da árvore
+versionada do projeto.
 
 Por compatibilidade, `ETL_AUTO_MIGRATE=true` continua sendo o padrão. Em
 ambientes corporativos, execute `migrate` com uma identidade autorizada a DDL
