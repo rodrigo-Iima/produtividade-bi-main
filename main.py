@@ -3,13 +3,16 @@
 import sys
 from uuid import uuid4
 
-from config.settings import ETL_AUTO_MIGRATE
+from config.settings import ETL_AUTO_MIGRATE, FLOW_ENABLED
 from database.connection import engine
 from database.etl_log import EtlRunLogger
 from database.schema import ensure_schema
 from database.seed import seed_all
 from etl.jira import JiraService
 from etl.clockify import ClockifyService
+from etl.flow_identity import FlowIdentityETL
+from etl.flow_points import FlowPointService
+from etl.hours_reconciliation import HoursReconciliationService
 from etl.jira_sprint_changelog import run_sprint_changelog_etl
 from etl.jira_sprint_enrichment import run_sprint_enrichment
 from etl.jira_quick_filters import run_jira_quick_filters
@@ -117,6 +120,11 @@ def _run_pipeline() -> int:
     ):
         failures.append("Extração e carga do Clockify")
 
+    if not failures:
+        failures.extend(_run_flow_steps(logger))
+    elif FLOW_ENABLED:
+        print("[SKIP] Integração Flow (depende da carga do Clockify)")
+
     if not failures and not _run_step(
         "Validação da carga transformada",
         validate_loaded_data,
@@ -125,6 +133,65 @@ def _run_pipeline() -> int:
         failures.append("Validação da carga transformada")
 
     return _finish_run(failures, logger)
+
+
+def _run_flow_steps(logger: EtlRunLogger | None) -> list[str]:
+    """Synchronize Flow identities first, then their returned point days."""
+    if not FLOW_ENABLED:
+        print("[SKIP] Integração Flow (FLOW_ENABLED=false)")
+        return []
+
+    identity_etl = FlowIdentityETL()
+
+    def run_identity():
+        result = identity_etl.run()
+        return {
+            **result,
+            "extracted": result["contracts"],
+            "transformed": result["people"],
+            "loaded": result["people"] + result["contracts"],
+        }
+
+    identity_step = "Sincronização de colaboradores Flow"
+    if not _run_step(identity_step, run_identity, logger):
+        return [identity_step]
+
+    point_etl = FlowPointService()
+
+    def run_points():
+        result = point_etl.run()
+        return {
+            **result,
+            "extracted": result["marks_loaded"],
+            "transformed": result["days_replaced"],
+            "loaded": (
+                result["days_replaced"]
+                + result["marks_loaded"]
+                + result["intervals_loaded"]
+            ),
+        }
+
+    point_step = "Extração e carga das marcações Flow"
+    if not _run_step(point_step, run_points, logger):
+        return [point_step]
+
+    def run_reconciliation():
+        result = HoursReconciliationService().run()
+        return {
+            **result,
+            "extracted": result["records_evaluated"],
+            "transformed": result["records_evaluated"],
+            "loaded": result["created"] + result["updated"],
+        }
+
+    reconciliation_step = "Conferência diária Flow × Clockify"
+    if not _run_step(
+        reconciliation_step,
+        run_reconciliation,
+        logger,
+    ):
+        return [reconciliation_step]
+    return []
 
 
 def _finish_run(failures: list[str], logger: EtlRunLogger | None) -> int:

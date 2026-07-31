@@ -10,6 +10,7 @@ from typing import Any
 
 from sqlalchemy import text
 
+from config.settings import FLOW_ENABLED
 from database.connection import SessionLocal
 from etl.quality import DataQualityError, validate_loaded_data
 from queries import hours_by_sprint, ticket_metrics, total_hours
@@ -190,6 +191,23 @@ def run_acceptance() -> dict[str, Any]:
         warning=profile["entries_without_tags"] > 0,
     )
 
+    if FLOW_ENABLED:
+        for status, count in profile["flow_reconciliation_statuses"].items():
+            if status not in {
+                "clockify_maior_vencido",
+            }:
+                continue
+            _add_check(
+                checks,
+                f"flow_{status}",
+                f"Conferência de horas: {status}",
+                count,
+                "0",
+                count == 0,
+                "medium",
+                warning=count > 0,
+            )
+
     ticket = ticket_metrics()
     _add_check(
         checks,
@@ -337,10 +355,26 @@ def _profile() -> dict[str, Any]:
                 WHERE r.issue_key IS NULL
                 """
             )).scalar_one()),
+            "flow_reconciliation_statuses": (
+                _flow_reconciliation_statuses(session)
+                if FLOW_ENABLED
+                else {}
+            ),
         }
     finally:
         session.close()
     return result
+
+
+def _flow_reconciliation_statuses(session) -> dict[str, int]:
+    rows = session.execute(text(
+        """
+        SELECT reconciliation_status, COUNT(*)
+        FROM fato_conferencia_horas_dia
+        GROUP BY reconciliation_status
+        """
+    )).all()
+    return {status: int(count) for status, count in rows}
 
 
 def _metric_reconciliation(profile: dict[str, Any]) -> dict[str, float]:

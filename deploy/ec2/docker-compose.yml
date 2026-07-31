@@ -6,11 +6,24 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-produtividade}
       POSTGRES_USER: ${POSTGRES_USER:-produtividade}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD em deploy/ec2/.env}
+    command:
+      - postgres
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/etc/postgresql/tls/server.crt
+      - -c
+      - ssl_key_file=/etc/postgresql/tls/server.key
+      - -c
+      - hba_file=/etc/postgresql/security/pg_hba.conf
     ports:
-      - "127.0.0.1:5432:5432"
+      - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./postgres/config/pg_hba.conf:/etc/postgresql/security/pg_hba.conf:ro
+      - ./postgres/tls/server.crt:/etc/postgresql/tls/server.crt:ro
+      - ./postgres/tls/server.key:/etc/postgresql/tls/server.key:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -30,6 +43,7 @@ services:
       MB_DB_USER: ${POSTGRES_USER:-produtividade}
       MB_DB_PASS: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD em deploy/ec2/.env}
       MB_DB_HOST: postgres
+      MB_DB_CONNECTION_URI: "jdbc:postgresql://postgres:5432/metabasedb?ssl=true&sslmode=verify-full&sslrootcert=/etc/postgresql/tls/ca.crt"
       JAVA_TIMEZONE: ${JAVA_TIMEZONE:-America/Sao_Paulo}
       JAVA_OPTS: "${JAVA_OPTS:--Xms256m -Xmx1280m}"
       MB_LOAD_SAMPLE_CONTENT: "false"
@@ -37,6 +51,8 @@ services:
       MB_JETTY_PORT: 3000
     ports:
       - "3000:3000"
+    volumes:
+      - ./postgres/tls/ca.crt:/etc/postgresql/tls/ca.crt:ro
 
 volumes:
   postgres_data:

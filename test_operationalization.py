@@ -7,6 +7,7 @@ from operationalization.lock import LocalRunLock
 from operationalization.migration import run_migrations
 from operationalization.runner import _run_with_retries, run_local
 from database.migrations.dashboard_views import _transaction_body
+from database import schema
 
 
 def test_local_lock_rejects_overlapping_execution():
@@ -67,6 +68,48 @@ def test_migration_entrypoint_reports_failure_and_disposes():
 def test_dashboard_sql_loader_removes_outer_transaction_control():
     body = _transaction_body("BEGIN;\nSELECT 1;\nCOMMIT;\n")
     assert body == "SELECT 1;"
+
+
+def test_complete_schema_creates_dashboard_dependencies_before_capacity_views(
+    monkeypatch,
+):
+    events = []
+    migration_names = [
+        "ensure_phase2_schema",
+        "ensure_phase5_schema",
+        "ensure_phase8_schema",
+        "ensure_phase9_schema",
+        "ensure_phase10_schema",
+        "ensure_phase11_schema",
+        "ensure_phase12_schema",
+        "ensure_phase13_schema",
+        "ensure_phase14_schema",
+        "ensure_phase16_schema",
+        "ensure_phase17_schema",
+        "ensure_phase18_schema",
+        "ensure_phase20_schema",
+        "ensure_phase19_schema",
+        "ensure_phase3_views",
+        "ensure_phase4_schema",
+        "ensure_dashboard_views",
+        "ensure_phase15_schema",
+    ]
+    for name in migration_names:
+        monkeypatch.setattr(
+            schema,
+            name,
+            lambda _engine, migration=name: events.append(migration),
+        )
+
+    schema._ensure_complete_schema()
+
+    assert events.index("ensure_dashboard_views") < events.index(
+        "ensure_phase15_schema"
+    )
+    assert events.index("ensure_phase20_schema") < events.index(
+        "ensure_phase19_schema"
+    )
+    assert events[-1] == "ensure_phase15_schema"
 
 
 if __name__ == "__main__":

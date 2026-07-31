@@ -38,6 +38,42 @@ Por compatibilidade, `ETL_AUTO_MIGRATE=true` continua sendo o padrão. Em
 ambientes corporativos, execute `migrate` com uma identidade autorizada a DDL
 e configure o job regular com `ETL_AUTO_MIGRATE=false`.
 
+## Integração Flow
+
+A carga de ponto permanece desativada até que o ambiente contenha:
+
+```dotenv
+FLOW_API_TOKEN=<segredo>
+FLOW_ENABLED=true
+HOURS_COMPETENCE_CLOSING_DAY=25
+HOURS_RECONCILIATION_LOOKBACK_DAYS=45
+HOURS_RECONCILIATION_TOLERANCE_MINUTES=15
+FLOW_RECONCILIATION_IGNORED_PERSON_IDS=208
+CLOCKIFY_INCREMENTAL_LOOKBACK_DAYS=10
+```
+
+O token deve ficar no `.env` não versionado ou no gerenciador de segredos do
+ambiente. Quando habilitada, a execução sincroniza primeiro os colaboradores
+Flow com os usuários ativos do Clockify e consulta marcações apenas para os
+vínculos ativos e resolvidos.
+
+A janela incremental do Clockify relê alterações recentes. Depois da carga do
+Flow, a conferência diária é recalculada e mantém um histórico somente quando
+horas ou situação mudam. Pendências ainda dentro do prazo são informativas;
+pendências vencidas aparecem como avisos no aceite pós-carga.
+
+Na conferência, lançamentos concluídos do Clockify são rateados na meia-noite
+de `America/Sao_Paulo`, sem alterar o lançamento bruto. Diferenças de até 15
+minutos por dia são aceitas; acima disso, a situação informa se o Clockify
+ficou maior ou menor que o ponto. Marcações ímpares, cálculo pendente ou erro
+do Flow invalidam o dia. O dia atual não gera alerta.
+
+O prazo usa fechamento fixo no dia 25 do próprio mês da data trabalhada:
+17/07 fecha em 25/07. Se o mês não possuir o dia configurado, usa-se seu
+último dia. Pessoas listadas em `FLOW_RECONCILIATION_IGNORED_PERSON_IDS`
+continuam no histórico, com status `ignorado_regra_negocio`, mas não geram
+pendências nem alertas.
+
 ## Agendamento por cron
 
 Para um teste simples com `cron`, use o caminho absoluto do projeto e registre

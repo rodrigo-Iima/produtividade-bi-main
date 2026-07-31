@@ -6,6 +6,7 @@ from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
 from clients.clockify_client import ClockifyClient
+from config.settings import CLOCKIFY_INCREMENTAL_LOOKBACK_DAYS
 from database.connection import SessionLocal
 from models.bridge_clockify_entry_issue import BridgeClockifyEntryIssue
 from models.bridge_clockify_entry_sprint import BridgeClockifyEntrySprint
@@ -58,9 +59,28 @@ class ClockifyService:
             end_dt = datetime.now(timezone.utc)
             start_str = start_dt.strftime("%Y-%m-%dT00:00:00.000Z")
             end_str = end_dt.strftime("%Y-%m-%dT23:59:59.000Z")
+            replacement_start = datetime.combine(
+                start_dt.date(),
+                datetime.min.time(),
+                tzinfo=timezone.utc,
+            )
+            replacement_end = datetime.combine(
+                end_dt.date(),
+                datetime.max.time(),
+                tzinfo=timezone.utc,
+            )
 
             raw_entries = self._extract_entries(start_str, end_str)
             if not raw_entries:
+                removed = self._replace_entries(
+                    session,
+                    [],
+                    [],
+                    [],
+                    [],
+                    replacement_start,
+                    replacement_end,
+                )
                 session.commit()
                 print("[ClockifyETL] No completed entries to load.")
                 return {
@@ -69,6 +89,7 @@ class ClockifyService:
                     "loaded": 0,
                     "groups": group_sync["groups"],
                     "memberships": group_sync["memberships"],
+                    "removed": removed,
                 }
 
             extracted_count = len(raw_entries)
@@ -131,7 +152,15 @@ class ClockifyService:
                     )
                 )
 
-            self._replace_entries(session, entries, tags, issues, sprint_links)
+            removed = self._replace_entries(
+                session,
+                entries,
+                tags,
+                issues,
+                sprint_links,
+                replacement_start,
+                replacement_end,
+            )
             session.commit()
             print(
                 f"[ClockifyETL] Loaded {len(entries)} entries, {len(tags)} tag links, "
@@ -146,6 +175,7 @@ class ClockifyService:
                 "sprint_links": len(sprint_links),
                 "groups": group_sync["groups"],
                 "memberships": group_sync["memberships"],
+                "removed": removed,
             }
         except Exception:
             session.rollback()
@@ -266,12 +296,18 @@ class ClockifyService:
             session.merge(DimColaborador(
                 user_id=user_id,
                 name=user.get("name") or user_id,
+                email=self._normalize_email(user.get("email")),
                 papel=user_roles.get(user_id),
                 squad_id=squad_id,
                 is_active=True,
                 clockify_last_seen_at=observed_at,
             ))
         session.flush()
+
+    @staticmethod
+    def _normalize_email(value: Any) -> Optional[str]:
+        normalized = str(value or "").strip().casefold()
+        return normalized or None
 
     def _sync_clockify_groups(
         self,
@@ -407,7 +443,14 @@ class ClockifyService:
                 FatoClockifyEntry.entry_date.desc()
             ).first()
             if last:
-                return datetime.combine(last[0], datetime.min.time(), tzinfo=timezone.utc) - timedelta(days=1)
+                last_midnight = datetime.combine(
+                    last[0],
+                    datetime.min.time(),
+                    tzinfo=timezone.utc,
+                )
+                return last_midnight - timedelta(
+                    days=CLOCKIFY_INCREMENTAL_LOOKBACK_DAYS
+                )
         return datetime(2026, 1, 1, tzinfo=timezone.utc)
 
     def _fetch_and_cache_tasks(self, entries: list[dict]) -> dict[str, str]:
@@ -589,10 +632,31 @@ class ClockifyService:
             return False
         return True
 
-    def _replace_entries(self, session, entries, tags, issues, sprint_links) -> None:
-        if not entries:
-            return
-        ids = [entry.entry_id for entry in entries]
+    def _replace_entries(
+        self,
+        session,
+        entries,
+        tags,
+        issues,
+        sprint_links,
+        replacement_start: datetime,
+        replacement_end: datetime,
+    ) -> int:
+        incoming_ids = {entry.entry_id for entry in entries}
+        existing_ids = {
+            entry_id
+            for (entry_id,) in session.query(FatoClockifyEntry.entry_id)
+            .filter(
+                FatoClockifyEntry.started_at >= replacement_start,
+                FatoClockifyEntry.started_at <= replacement_end,
+            )
+            .all()
+        }
+        stale_ids = existing_ids - incoming_ids
+        ids = list(incoming_ids | stale_ids)
+        if not ids:
+            return 0
+
         session.query(BridgeClockifyEntryTag).filter(
             BridgeClockifyEntryTag.entry_id.in_(ids)
         ).delete(synchronize_session=False)
@@ -611,6 +675,7 @@ class ClockifyService:
         session.add_all(tags)
         session.add_all(issues)
         session.add_all(sprint_links)
+        return len(stale_ids)
 
     @staticmethod
     def _extract_issue_keys(*texts: Optional[str]) -> list[str]:

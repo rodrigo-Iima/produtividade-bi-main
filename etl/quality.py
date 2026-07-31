@@ -84,6 +84,67 @@ def validate_loaded_data() -> dict[str, Any]:
                 'description', 'task_name', 'description_and_task', 'legacy'
             )
         """,
+        "orphan_flow_days": """
+            SELECT COUNT(*) FROM fato_flow_dia d
+            LEFT JOIN dim_flow_pessoa p
+              ON p.flow_person_id = d.flow_person_id
+            WHERE p.flow_person_id IS NULL
+        """,
+        "orphan_flow_markings": """
+            SELECT COUNT(*) FROM fato_flow_marcacao m
+            LEFT JOIN fato_flow_dia d
+              ON d.flow_person_id = m.flow_person_id
+             AND d.work_date = m.work_date
+            WHERE d.flow_person_id IS NULL
+        """,
+        "invalid_flow_day_periods": """
+            SELECT COUNT(*) FROM fato_flow_dia
+            WHERE period_start > period_end
+               OR work_date NOT BETWEEN period_start AND period_end
+        """,
+        "invalid_flow_mark_sequences": """
+            SELECT COUNT(*)
+            FROM (
+                SELECT flow_person_id, work_date
+                FROM fato_flow_marcacao
+                GROUP BY flow_person_id, work_date
+                HAVING MIN(order_in_day) <> 1
+                    OR MAX(order_in_day) <> COUNT(*)
+            ) invalid_sequences
+        """,
+        "orphan_flow_intervals": """
+            SELECT COUNT(*) FROM fato_flow_intervalo i
+            LEFT JOIN fato_flow_dia d
+              ON d.flow_person_id = i.flow_person_id
+             AND d.work_date = i.work_date
+            WHERE d.flow_person_id IS NULL
+        """,
+        "invalid_flow_intervals": """
+            SELECT COUNT(*) FROM fato_flow_intervalo
+            WHERE ended_at < started_at
+               OR duration_seconds < 0
+               OR duration_seconds <> ROUND(
+                    EXTRACT(EPOCH FROM (ended_at - started_at))
+               )
+               OR exit_mark_order <> entry_mark_order + 1
+        """,
+        "invalid_hours_reconciliation": """
+            SELECT COUNT(*) FROM fato_conferencia_horas_dia
+            WHERE point_mark_count < 0
+               OR point_interval_count < 0
+               OR point_worked_seconds < 0
+               OR clockify_entry_count < 0
+               OR clockify_seconds < 0
+               OR tolerance_seconds < 0
+               OR delta_seconds
+                  <> clockify_seconds - point_worked_seconds
+               OR within_tolerance
+                  <> (
+                      point_complete
+                      AND clockify_entry_count > 0
+                      AND ABS(delta_seconds) <= tolerance_seconds
+                  )
+        """,
         "dashboard_entries_without_sprint": """
             SELECT COUNT(*)
             FROM public.vw_dashboard_entry_final

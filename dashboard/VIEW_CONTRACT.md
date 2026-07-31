@@ -20,6 +20,11 @@ diretamente ao PostgreSQL.
 | `vw_dashboard_sprint_capacity` | sprint × squad | Capacidade e horas por equipe na sprint |
 | `vw_dashboard_sprint_efficiency` | sprint × squad × papel × grupo de capacidade | Eficiência detalhada por composição da equipe |
 | `vw_dashboard_filter_sprint_squad` | sprint × squad | Opções válidas do filtro combinado |
+| `vw_flow_ponto_dia` | colaborador Flow × dia | Marcações, pares sequenciais e horas canônicas do ponto |
+| `vw_flow_marcacao_detail` | colaborador Flow × dia × ordem | Auditoria de cada marcação na ordem retornada pela API |
+| `vw_conferencia_horas_dia` | colaborador × dia | Comparação incremental entre horas do ponto e lançamentos Clockify |
+| `vw_conferencia_horas_semana` | colaborador × semana | Resumo complementar da conferência diária e de suas pendências |
+| `vw_fila_revisao_horas` | colaborador × dia acionável | Revisão exclusiva de dias vencidos em que o Clockify supera o ponto |
 
 ## Filtros
 
@@ -42,6 +47,53 @@ diretamente ao PostgreSQL.
    timestamps devem continuar usando tipos com timezone.
 6. A aplicação deve abrir conexões com um usuário somente leitura e
    `search_path` explícito.
+7. As horas do ponto são a soma dos pares sequenciais de marcações `1–2`,
+   `3–4` e assim por diante; a data analítica continua sendo `master_date`,
+   inclusive quando a saída ocorre após a meia-noite.
+8. Marcações ímpares, cálculos pendentes ou erros do Flow tornam o ponto
+   incompleto. O campo `confirmed` permanece informativo porque a homologação
+   mostrou dias estruturalmente válidos com valor `false`.
+9. O banco de horas não participa da primeira versão da jornada nem da
+   conferência com o Clockify.
+10. A conferência soma todos os lançamentos concluídos do Clockify e divide
+    lançamentos que atravessam a meia-noite no timezone
+    `America/Sao_Paulo`; a fato bruta não é alterada.
+11. Diferenças diárias de até 15 minutos, inclusive, são aceitas. Acima disso,
+    o status distingue Clockify maior de Clockify menor.
+12. Todo dia com ponto e sem Clockify é pendência. Dias `Compensado` continuam
+    identificados pelo tipo para análise separada; Clockify em `Férias` ou
+    `Repouso Remunerado` gera alerta específico.
+13. O dia corrente permanece `em_andamento` e só entra na cobrança a partir do
+    dia seguinte.
+14. O prazo de ajuste fecha no dia 25 do próprio mês da data trabalhada; por
+    exemplo, 17/07 tem prazo até 25/07.
+15. Exceções pessoais permanecem auditáveis como
+    `ignorado_regra_negocio`, sem compor pendências ou alertas.
+16. A meta de aproveitamento dos lançamentos é 80% das horas válidas do ponto.
+    A taxa `clockify_utilization_rate` e o indicador
+    `meets_clockify_utilization_target` ficam disponíveis no grão diário.
+17. Clockify menor que o ponto, ponto ausente/incompleto e ponto sem Clockify
+    não entram na fila de revisão cuidadosa. Continuam no histórico e nas views
+    do painel; dias sem Clockify servem para lembrar o colaborador de lançar.
+
+## Decisões pendentes para métricas de ponto
+
+- Uso de jornada esperada, justificativas e avisos do Flow.
+- Limites, frequência e canal dos alertas operacionais de dados.
+
+## Estrutura planejada para banco de horas
+
+Quando o contrato do campo `hours_bank` estiver validado, o saldo será
+armazenado como snapshot, sem sobrescrever o histórico:
+
+- chave por pessoa Flow, data de referência e instante de coleta;
+- saldo assinado normalizado em segundos;
+- período de competência e identificador de contrato, quando disponíveis;
+- valor e unidade originais preservados para auditoria;
+- origem da alteração separando cálculo normal, ajuste e expiração.
+
+Essa futura fato não alterará as horas pareadas. Ela será conciliada em uma
+camada própria para evitar misturar jornada realizada com saldo acumulado.
 
 ## Contrato operacional da futura imagem
 

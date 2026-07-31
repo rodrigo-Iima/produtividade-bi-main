@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy import text
 
+from config.settings import FLOW_ENABLED
 from database.connection import engine
 
 
@@ -16,6 +17,17 @@ REQUIRED_TABLES = (
     "dim_sprint",
     "dim_ticket_jira",
     "fato_clockify_entry",
+) + (
+    (
+        "dim_flow_pessoa",
+        "fato_flow_dia",
+        "fato_flow_marcacao",
+        "fato_flow_intervalo",
+        "fato_conferencia_horas_dia",
+        "hist_conferencia_horas_dia",
+    )
+    if FLOW_ENABLED
+    else ()
 )
 
 

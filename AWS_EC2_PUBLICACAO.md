@@ -65,7 +65,8 @@ cd /opt/produtividade-bi
 python3 -m venv .venv
 ./.venv/bin/pip install -r requirements.txt
 cp .env.example .env
-# preencher Jira, Clockify e PostgreSQL
+# preencher Jira, Clockify, Flow e PostgreSQL
+# definir FLOW_ENABLED=true somente depois de fornecer FLOW_API_TOKEN
 ./.venv/bin/python -m operationalization healthcheck
 ./.venv/bin/python -m operationalization run --retries 1 --retry-delay 30
 ```

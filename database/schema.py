@@ -15,27 +15,24 @@ from database.migrations.phase13 import ensure_phase13_schema
 from database.migrations.phase14 import ensure_phase14_schema
 from database.migrations.phase15 import ensure_phase15_schema
 from database.migrations.phase16 import ensure_phase16_schema
+from database.migrations.phase17 import ensure_phase17_schema
+from database.migrations.phase18 import ensure_phase18_schema
+from database.migrations.phase19 import ensure_phase19_schema
+from database.migrations.phase20 import ensure_phase20_schema
 
 
 def ensure_schema() -> None:
-    """Create or migrate the current single-host EC2 schema."""
-    ensure_phase2_schema(engine)
-    ensure_phase5_schema(engine)
-    ensure_phase8_schema(engine)
-    ensure_phase9_schema(engine)
-    ensure_phase10_schema(engine)
-    ensure_phase11_schema(engine)
-    ensure_phase12_schema(engine)
-    ensure_phase13_schema(engine)
-    ensure_phase14_schema(engine)
-    ensure_phase15_schema(engine)
-    ensure_phase16_schema(engine)
-    ensure_phase3_views(engine)
-    ensure_phase4_schema(engine)
+    """Create or migrate the complete single-host EC2 schema."""
+    _ensure_complete_schema()
 
 
 def ensure_portable_schema() -> None:
-    """Create a complete schema without manual dashboard SQL steps."""
+    """Create the same complete schema in containerized environments."""
+    _ensure_complete_schema()
+
+
+def _ensure_complete_schema() -> None:
+    """Apply tables and views in their dependency order."""
     ensure_phase2_schema(engine)
     ensure_phase5_schema(engine)
     ensure_phase8_schema(engine)
@@ -45,8 +42,12 @@ def ensure_portable_schema() -> None:
     ensure_phase12_schema(engine)
     ensure_phase13_schema(engine)
     ensure_phase14_schema(engine)
+    ensure_phase16_schema(engine)
+    ensure_phase17_schema(engine)
+    ensure_phase18_schema(engine)
+    ensure_phase20_schema(engine)
+    ensure_phase19_schema(engine)
     ensure_phase3_views(engine)
     ensure_phase4_schema(engine)
     ensure_dashboard_views(engine)
     ensure_phase15_schema(engine)
-    ensure_phase16_schema(engine)
