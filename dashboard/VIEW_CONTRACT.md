@@ -17,8 +17,9 @@ diretamente ao PostgreSQL.
 | `vw_dashboard_ticket_filterable` | ticket × sprint × colaborador relacionado | Propagação de filtros de pessoa e papel para métricas Jira |
 | `vw_dashboard_sprint_kpis` | sprint | Resumo de horas, tickets e ambiguidades por sprint |
 | `vw_dashboard_entry_final` | lançamento Clockify | Classificação final de sprint e squad para painéis corporativos |
-| `vw_dashboard_sprint_capacity` | sprint × squad | Capacidade e horas por equipe na sprint |
-| `vw_dashboard_sprint_efficiency` | sprint × squad × papel × grupo de capacidade | Eficiência detalhada por composição da equipe |
+| `vw_dashboard_sprint_capacity` | sprint × squad | Capacidade efetiva e horas por equipe na sprint |
+| `vw_dashboard_sprint_efficiency` | sprint × squad × papel × grupo de capacidade | Eficiência detalhada por composição da equipe, usando capacidade efetiva |
+| `vw_dashboard_sprint_timebox` | sprint × squad | Fonte única dos cards de timebox, horas trabalhadas Flow e horas lançadas Clockify |
 | `vw_dashboard_filter_sprint_squad` | sprint × squad | Opções válidas do filtro combinado |
 | `vw_flow_ponto_dia` | colaborador Flow × dia | Marcações, pares sequenciais e horas canônicas do ponto |
 | `vw_flow_marcacao_detail` | colaborador Flow × dia × ordem | Auditoria de cada marcação na ordem retornada pela API |
@@ -75,6 +76,17 @@ diretamente ao PostgreSQL.
 17. Clockify menor que o ponto, ponto ausente/incompleto e ponto sem Clockify
     não entram na fila de revisão cuidadosa. Continuam no histórico e nas views
     do painel; dias sem Clockify servem para lembrar o colaborador de lançar.
+18. A capacidade efetiva da Sprint preserva o snapshot teórico existente e
+    desconta, por colaborador, dias Flow classificados como `Compensado`,
+    `Férias`, `Repouso Remunerado` ou `Ocorrência`, limitados à capacidade
+    disponível. A view preserva `calendar_capacity_hours`,
+    `flow_non_working_days`, `flow_non_working_days_applied` e
+    `flow_non_working_hours`; `sprint_window_business_days` permite identificar
+    eventual defasagem da janela materializada.
+19. Os três cards operacionais usam `vw_dashboard_sprint_timebox`: `timebox_hours`
+    é a capacidade produtiva efetiva, `hours_worked` é a soma das marcações
+    Flow e `hours_logged` é a soma dos lançamentos Clockify. Os três valores
+    permanecem separados; Clockify não substitui as horas de ponto.
 
 ## Decisões pendentes para métricas de ponto
 

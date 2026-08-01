@@ -45,6 +45,18 @@ sprint_start <= momento atual
 sprint_state IN (active, closed)
 ```
 
+Para os três cards operacionais, usar `vw_dashboard_sprint_timebox` com o
+filtro `sprint_state = 'active'`:
+
+- **Timebox:** `SUM(timebox_hours)`, capacidade produtiva efetiva.
+- **Horas trabalhadas:** `SUM(hours_worked)`, soma das marcações do ponto Flow.
+- **Horas lançadas:** `SUM(hours_logged)`, soma dos lançamentos Clockify.
+
+Os valores devem permanecer em cards separados. `worked_timebox_pct` mede
+horas de ponto sobre a capacidade; `clockify_to_point_pct` mostra quanto do
+tempo trabalhado foi lançado no Clockify. Para auditoria, a view também expõe
+`theoretical_timebox_hours`, `timebox_excluded_hours` e os dias Flow aplicados.
+
 ## Semântica de squad e filtros
 
 O modelo agora mantém as duas noções de squad, sem misturá-las:

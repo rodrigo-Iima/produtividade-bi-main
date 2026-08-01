@@ -19,6 +19,8 @@ from database.migrations.phase17 import ensure_phase17_schema
 from database.migrations.phase18 import ensure_phase18_schema
 from database.migrations.phase19 import ensure_phase19_schema
 from database.migrations.phase20 import ensure_phase20_schema
+from database.migrations.phase21 import ensure_phase21_schema
+from database.migrations.phase22 import ensure_phase22_schema
 
 
 def ensure_schema() -> None:
@@ -51,3 +53,5 @@ def _ensure_complete_schema() -> None:
     ensure_phase4_schema(engine)
     ensure_dashboard_views(engine)
     ensure_phase15_schema(engine)
+    ensure_phase21_schema(engine)
+    ensure_phase22_schema(engine)
