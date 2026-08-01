@@ -265,6 +265,9 @@ class JiraService:
                     sprint_name=sprint.get("name") or f"Sprint {sprint_id}",
                     sprint_start=sprint_start,
                     sprint_end=self._parse_date(sprint.get("endDate")),
+                    sprint_completed_at=self._parse_date(
+                        sprint.get("completeDate")
+                    ),
                     sprint_state=sprint_state,
                     origin_board_id=origin_board_id,
                 ),
@@ -292,7 +295,18 @@ class JiraService:
                 ).delete(synchronize_session=False)
 
                 for sprint_row in record["sprints"]:
-                    session.merge(sprint_row["sprint"])
+                    sprint = sprint_row["sprint"]
+                    # Issue payloads do not always include Jira's
+                    # ``completeDate`` even for a closed Sprint. Do not let
+                    # that partial payload erase a completion timestamp
+                    # already obtained from the board Sprint catalog.
+                    if sprint.sprint_completed_at is None:
+                        existing_sprint = session.get(DimSprint, sprint.sprint_id)
+                        if existing_sprint is not None:
+                            sprint.sprint_completed_at = (
+                                existing_sprint.sprint_completed_at
+                            )
+                    session.merge(sprint)
                     session.merge(sprint_row["relation"])
 
             self._purge_out_of_scope_sprints(session)

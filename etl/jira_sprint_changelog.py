@@ -197,6 +197,8 @@ class SprintChangelogETL:
             existing.sprint_start is not None,
             existing.sprint_end is not None,
             existing.sprint_state is not None,
+            (existing.sprint_state or "").casefold() != "closed"
+            or existing.sprint_completed_at is not None,
         ))
         metadata = {} if has_complete_metadata else self._get_sprint_metadata(sprint_id)
 
@@ -208,6 +210,11 @@ class SprintChangelogETL:
         ).strip()[:200]
         start = self._parse_date(metadata.get("startDate")) if metadata.get("startDate") else None
         end = self._parse_date(metadata.get("endDate")) if metadata.get("endDate") else None
+        completed_at = (
+            self._parse_date(metadata.get("completeDate"))
+            if metadata.get("completeDate")
+            else None
+        )
         state = metadata.get("state")
         origin_board_id = self._parse_int(
             metadata.get("originBoardId") or metadata.get("boardId")
@@ -227,6 +234,7 @@ class SprintChangelogETL:
             sprint_name=name or f"Sprint {sprint_id}",
             sprint_start=start,
             sprint_end=end,
+            sprint_completed_at=completed_at,
             sprint_state=state,
             origin_board_id=origin_board_id,
         )
@@ -240,6 +248,10 @@ class SprintChangelogETL:
                 ),
                 "sprint_start": func.coalesce(DimSprint.sprint_start, excluded.sprint_start),
                 "sprint_end": func.coalesce(DimSprint.sprint_end, excluded.sprint_end),
+                "sprint_completed_at": func.coalesce(
+                    excluded.sprint_completed_at,
+                    DimSprint.sprint_completed_at,
+                ),
                 "sprint_state": func.coalesce(DimSprint.sprint_state, excluded.sprint_state),
                 "origin_board_id": func.coalesce(
                     DimSprint.origin_board_id, excluded.origin_board_id

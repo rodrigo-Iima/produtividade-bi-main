@@ -132,6 +132,37 @@ def test_jira_transform_persists_crossing_flag_on_ticket():
     assert result["ticket"].issue_type_name == "Melhoria"
 
 
+def test_jira_transform_persists_real_sprint_completion_timestamp():
+    issue = {
+        "key": "ZG-101",
+        "fields": {
+            "summary": "Ticket de sprint encerrada",
+            "status": {"name": "Concluído"},
+            "project": {"key": "ZG", "name": "Projeto ZG"},
+            "issuetype": {"id": "10056", "name": "Melhoria"},
+            "created": "2026-07-01T10:00:00Z",
+            "updated": "2026-07-20T18:00:00Z",
+            "resolutiondate": None,
+            JIRA_SQUAD_FIELD: {"value": "Squad de teste"},
+            JIRA_SPRINT_FIELD: [{
+                "id": "9239",
+                "name": "Operadoras Sprint 26",
+                "state": "closed",
+                "startDate": "2026-06-30T14:23:07.960Z",
+                "endDate": "2026-07-14T03:00:00.000Z",
+                "completeDate": "2026-07-20T20:31:45.000Z",
+            }],
+            JIRA_CROSSING_FIELD: None,
+        },
+    }
+
+    result = JiraService()._transform_issue(issue)
+    sprint = result["sprints"][0]["sprint"]
+    assert sprint.sprint_completed_at == datetime(
+        2026, 7, 20, 20, 31, 45, tzinfo=timezone.utc
+    )
+
+
 if __name__ == "__main__":
     tests = [
         test_clockify_report_rows_are_deduplicated_by_entry_id,
@@ -141,6 +172,7 @@ if __name__ == "__main__":
         test_clockify_issue_key_source_is_classified_per_issue,
         test_jira_crossing_option_is_normalized_to_nullable_boolean,
         test_jira_transform_persists_crossing_flag_on_ticket,
+        test_jira_transform_persists_real_sprint_completion_timestamp,
     ]
     for test in tests:
         test()

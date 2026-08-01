@@ -29,4 +29,6 @@ def test_timebox_card_view_keeps_capacity_point_and_clockify_separate():
     assert "hours_worked" in TIMEBOX_CARD_VIEW_SQL
     assert "hours_logged" in TIMEBOX_CARD_VIEW_SQL
     assert "clockify_to_point_pct" in TIMEBOX_CARD_VIEW_SQL
+    assert "sprint_completed_at" in TIMEBOX_CARD_VIEW_SQL
+    assert "effective_sprint_end_date" in TIMEBOX_CARD_VIEW_SQL
     assert "America/Sao_Paulo" in TIMEBOX_CARD_VIEW_SQL

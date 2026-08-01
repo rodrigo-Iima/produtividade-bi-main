@@ -257,6 +257,9 @@ class JiraQuickFilterService:
                     continue
 
                 sprint_end = self._parse_datetime(raw_sprint.get("endDate"))
+                sprint_completed_at = self._parse_datetime(
+                    raw_sprint.get("completeDate")
+                )
                 origin_board_id = self._parse_int(
                     raw_sprint.get("originBoardId") or raw_sprint.get("boardId")
                 ) or board_id
@@ -269,6 +272,8 @@ class JiraQuickFilterService:
                 )[:200]
                 sprint.sprint_start = sprint_start
                 sprint.sprint_end = sprint_end
+                if sprint_completed_at is not None:
+                    sprint.sprint_completed_at = sprint_completed_at
                 sprint.sprint_state = sprint_state
                 sprint.origin_board_id = origin_board_id
                 refreshed += 1

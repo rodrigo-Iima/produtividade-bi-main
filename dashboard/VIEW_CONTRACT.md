@@ -76,17 +76,23 @@ diretamente ao PostgreSQL.
 17. Clockify menor que o ponto, ponto ausente/incompleto e ponto sem Clockify
     não entram na fila de revisão cuidadosa. Continuam no histórico e nas views
     do painel; dias sem Clockify servem para lembrar o colaborador de lançar.
-18. A capacidade efetiva da Sprint preserva o snapshot teórico existente e
-    desconta, por colaborador, dias Flow classificados como `Compensado`,
-    `Férias`, `Repouso Remunerado` ou `Ocorrência`, limitados à capacidade
-    disponível. A view preserva `calendar_capacity_hours`,
-    `flow_non_working_days`, `flow_non_working_days_applied` e
-    `flow_non_working_hours`; `sprint_window_business_days` permite identificar
-    eventual defasagem da janela materializada.
+18. A capacidade efetiva da Sprint usa a janela real de conclusão quando
+    `sprint_completed_at` estiver preenchido; para uma Sprint fechada, o dia
+    local da conclusão é incluído. Se a conclusão ainda não estiver disponível,
+    a janela planejada (`sprint_end`) permanece como fallback. A view preserva
+    `snapshot_capacity_hours` e `snapshot_business_days` para auditoria do
+    cálculo materializado anteriormente. Dentro da janela efetiva, desconta,
+    por colaborador, dias Flow classificados como `Compensado`, `Férias`,
+    `Repouso Remunerado` ou `Ocorrência`, limitados à capacidade disponível.
+    Também preserva `calendar_capacity_hours`, `flow_non_working_days`,
+    `flow_non_working_days_applied` e `flow_non_working_hours`;
+    `effective_sprint_end_date` expõe o limite exclusivo usado pelas views.
 19. Os três cards operacionais usam `vw_dashboard_sprint_timebox`: `timebox_hours`
     é a capacidade produtiva efetiva, `hours_worked` é a soma das marcações
-    Flow e `hours_logged` é a soma dos lançamentos Clockify. Os três valores
-    permanecem separados; Clockify não substitui as horas de ponto.
+    Flow na janela efetiva, e `hours_logged` é a soma dos lançamentos Clockify
+    atribuídos à Sprint. Os três valores permanecem separados; Clockify não
+    substitui as horas de ponto. `sprint_end` continua disponível como fim
+    planejado e `sprint_completed_at` como encerramento real.
 
 ## Decisões pendentes para métricas de ponto
 

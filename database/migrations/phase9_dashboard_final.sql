@@ -16,6 +16,7 @@ SELECT
     s.sprint_name,
     s.sprint_start,
     s.sprint_end,
+    s.sprint_completed_at,
     s.sprint_state,
     b.board_id,
     b.squad_id,
@@ -45,7 +46,18 @@ WITH sprint_windows AS (
         s.sprint_name,
         s.sprint_start,
         s.sprint_end,
+        s.sprint_completed_at,
         s.sprint_state,
+        CASE
+            WHEN LOWER(s.sprint_state) = 'closed'
+             AND s.sprint_completed_at IS NOT NULL
+            THEN (
+                (
+                    s.sprint_completed_at AT TIME ZONE 'America/Sao_Paulo'
+                )::DATE + 1
+            )::TIMESTAMP AT TIME ZONE 'America/Sao_Paulo'
+            ELSE s.sprint_end
+        END AS effective_sprint_end_at,
         LEAD(s.sprint_start) OVER (
             PARTITION BY b.squad_id
             ORDER BY s.sprint_start
@@ -69,6 +81,8 @@ WITH sprint_windows AS (
         s.sprint_name,
         s.sprint_start,
         s.sprint_end,
+        s.sprint_completed_at,
+        s.effective_sprint_end_at,
         s.sprint_state
     FROM public.vw_dashboard_entry_base AS eb
     JOIN sprint_windows AS s
@@ -76,11 +90,16 @@ WITH sprint_windows AS (
      AND eb.collaborator_squad_name <> 'Transversal'
      AND eb.started_at IS NOT NULL
      AND eb.started_at >= s.sprint_start
-     AND eb.started_at < COALESCE(
-             s.next_sprint_start,
-             s.sprint_end,
-             CURRENT_TIMESTAMP
-         )
+     AND eb.started_at < CASE
+             WHEN LOWER(s.sprint_state) = 'closed'
+              AND s.sprint_completed_at IS NOT NULL
+             THEN s.effective_sprint_end_at
+             ELSE COALESCE(
+                 s.next_sprint_start,
+                 s.sprint_end,
+                 CURRENT_TIMESTAMP
+             )
+         END
 ), period_rollup AS (
     SELECT
         entry_id,
@@ -89,6 +108,8 @@ WITH sprint_windows AS (
         MIN(sprint_name) AS period_sprint_name,
         MIN(sprint_start) AS period_sprint_start,
         MIN(sprint_end) AS period_sprint_end,
+        MIN(sprint_completed_at) AS period_sprint_completed_at,
+        MIN(effective_sprint_end_at) AS period_effective_sprint_end_at,
         MIN(sprint_state) AS period_sprint_state
     FROM period_candidates
     GROUP BY entry_id
@@ -153,6 +174,16 @@ SELECT
     END AS sprint_end,
     CASE
         WHEN eb.collaborator_squad_name = 'Transversal' THEN NULL
+        WHEN pr.sprint_candidate_count = 1 THEN pr.period_sprint_completed_at
+        ELSE NULL
+    END AS sprint_completed_at,
+    CASE
+        WHEN eb.collaborator_squad_name = 'Transversal' THEN NULL
+        WHEN pr.sprint_candidate_count = 1 THEN pr.period_effective_sprint_end_at
+        ELSE NULL
+    END AS effective_sprint_end_at,
+    CASE
+        WHEN eb.collaborator_squad_name = 'Transversal' THEN NULL
         WHEN pr.sprint_candidate_count = 1 THEN pr.period_sprint_state
         ELSE NULL
     END AS sprint_state,
@@ -176,7 +207,7 @@ LEFT JOIN squad_timeline AS st
   ON st.squad_id = eb.collaborator_squad_id;
 
 COMMENT ON VIEW public.vw_dashboard_entry_final IS
-    'Grão: uma linha por lançamento Clockify. A Sprint é definida pelo started_at na janela efetiva particionada por Squad até o início da próxima Sprint da mesma Squad; Transversal é nao_aplicavel e historico_sem_sprint identifica lançamentos anteriores à primeira Sprint conhecida; ticket_sprint_id representa somente a classificação via issue Jira.';
+    'Grão: uma linha por lançamento Clockify. Para Sprints fechadas com sprint_completed_at, a janela termina no início do dia seguinte ao encerramento real; para as demais, termina no início da próxima Sprint da mesma Squad (ou no fim planejado). Transversal é nao_aplicavel e historico_sem_sprint identifica lançamentos anteriores à primeira Sprint conhecida; ticket_sprint_id representa somente a classificação via issue Jira.';
 
 CREATE INDEX IF NOT EXISTS ix_bridge_sprint_squad_sprint_id
     ON public.bridge_sprint_squad (sprint_id);

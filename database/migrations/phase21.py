@@ -14,13 +14,30 @@ DROP VIEW IF EXISTS
 CASCADE;
 
 CREATE VIEW public.vw_dashboard_sprint_capacity_detail AS
-WITH capacity_day_summary AS (
+WITH sprint_windows AS (
+    SELECT
+        s.sprint_id,
+        s.sprint_start,
+        s.sprint_completed_at,
+        CASE
+            WHEN LOWER(COALESCE(s.sprint_state, '')) = 'closed'
+             AND s.sprint_completed_at IS NOT NULL
+            THEN (
+                s.sprint_completed_at AT TIME ZONE 'America/Sao_Paulo'
+            )::DATE + 1
+            ELSE (
+                s.sprint_end AT TIME ZONE 'America/Sao_Paulo'
+            )::DATE
+        END AS effective_end_date
+    FROM public.dim_sprint AS s
+),
+capacity_day_summary AS (
     SELECT
         c.sprint_id,
         c.user_id,
         COUNT(*) FILTER (
             WHERE EXTRACT(ISODOW FROM sprint_day.work_date) BETWEEN 1 AND 5
-        )::INTEGER AS sprint_window_business_days,
+        )::INTEGER AS effective_business_days,
         COUNT(*) FILTER (
             WHERE EXTRACT(ISODOW FROM sprint_day.work_date) BETWEEN 1 AND 5
               AND p.work_date IS NOT NULL
@@ -38,11 +55,11 @@ WITH capacity_day_summary AS (
               )
         )::INTEGER AS flow_non_working_days
     FROM public.fato_sprint_capacidade AS c
-    JOIN public.dim_sprint AS s
-      ON s.sprint_id = c.sprint_id
+    JOIN sprint_windows AS w
+      ON w.sprint_id = c.sprint_id
     CROSS JOIN LATERAL generate_series(
-        (s.sprint_start AT TIME ZONE 'America/Sao_Paulo')::DATE,
-        ((s.sprint_end AT TIME ZONE 'America/Sao_Paulo')::DATE - 1),
+        (w.sprint_start AT TIME ZONE 'America/Sao_Paulo')::DATE,
+        w.effective_end_date - 1,
         INTERVAL '1 day'
     ) AS sprint_day(work_date)
     LEFT JOIN public.vw_flow_ponto_dia AS p
@@ -85,6 +102,8 @@ capacity_detail AS (
         s.sprint_name,
         s.sprint_start,
         s.sprint_end,
+        s.sprint_completed_at,
+        w.effective_end_date AS effective_sprint_end_date,
         s.sprint_state,
         c.user_id,
         col.name AS collaborator_name,
@@ -94,33 +113,43 @@ capacity_detail AS (
         c.capacity_group_id,
         c.capacity_group_name,
         c.capacity_hours_week,
-        c.business_days AS calendar_business_days,
-        d.sprint_window_business_days,
+        d.effective_business_days AS calendar_business_days,
+        d.effective_business_days AS sprint_window_business_days,
+        c.business_days AS snapshot_business_days,
         d.flow_observed_business_days,
         d.flow_non_working_days,
-        LEAST(c.business_days, d.flow_non_working_days)
+        LEAST(d.effective_business_days, d.flow_non_working_days)
             AS flow_non_working_days_applied,
         GREATEST(
-            c.business_days - LEAST(c.business_days, d.flow_non_working_days),
+            d.effective_business_days
+            - LEAST(d.effective_business_days, d.flow_non_working_days),
             0
         ) AS business_days,
-        c.capacity_hours AS calendar_capacity_hours,
         (
             c.capacity_hours_week / 5.0
-        ) * LEAST(c.business_days, d.flow_non_working_days)
+        ) * d.effective_business_days AS calendar_capacity_hours,
+        (
+            c.capacity_hours_week / 5.0
+        ) * LEAST(d.effective_business_days, d.flow_non_working_days)
             AS flow_non_working_hours,
         GREATEST(
-            c.capacity_hours
-            - (
+            (
                 c.capacity_hours_week / 5.0
-            ) * LEAST(c.business_days, d.flow_non_working_days),
+            ) * GREATEST(
+                d.effective_business_days
+                - LEAST(d.effective_business_days, d.flow_non_working_days),
+                0
+            ),
             0
         ) AS capacity_hours,
+        c.capacity_hours AS snapshot_capacity_hours,
         c.source AS capacity_source,
         c.calculated_at
     FROM public.fato_sprint_capacidade AS c
     JOIN public.dim_sprint AS s
       ON s.sprint_id = c.sprint_id
+    JOIN sprint_windows AS w
+      ON w.sprint_id = c.sprint_id
     JOIN public.dim_colaborador AS col
       ON col.user_id = c.user_id
     JOIN capacity_day_summary AS d
@@ -132,6 +161,8 @@ SELECT
     c.sprint_name,
     c.sprint_start,
     c.sprint_end,
+    c.sprint_completed_at,
+    c.effective_sprint_end_date,
     c.sprint_state,
     c.user_id,
     c.collaborator_name,
@@ -143,6 +174,7 @@ SELECT
     c.capacity_hours_week,
     c.calendar_business_days,
     c.sprint_window_business_days,
+    c.snapshot_business_days,
     c.flow_observed_business_days,
     c.flow_non_working_days,
     c.flow_non_working_days_applied,
@@ -150,6 +182,7 @@ SELECT
     c.calendar_capacity_hours,
     c.flow_non_working_hours,
     c.capacity_hours,
+    c.snapshot_capacity_hours,
     c.capacity_source,
     c.calculated_at,
     COALESCE(e.entry_count, 0) AS entry_count,
@@ -166,7 +199,7 @@ LEFT JOIN entry_by_user_sprint AS e
  AND e.user_id = c.user_id;
 
 COMMENT ON VIEW public.vw_dashboard_sprint_capacity_detail IS
-    'Grão: colaborador × Sprint. Capacidade teórica preserva o snapshot existente e desconta, no máximo, os dias Flow não trabalhados que cabem nessa capacidade; a janela atual da Sprint fica disponível para diagnóstico.';
+    'Grão: colaborador × Sprint. Capacidade usa a janela real de conclusão quando disponível; sprint_end continua sendo o fim planejado e o snapshot anterior fica disponível para auditoria.';
 
 CREATE VIEW public.vw_dashboard_sprint_capacity AS
 SELECT
@@ -174,6 +207,8 @@ SELECT
     sprint_name,
     sprint_start,
     sprint_end,
+    sprint_completed_at,
+    effective_sprint_end_date,
     sprint_state,
     squad_id,
     squad_name,
@@ -186,11 +221,13 @@ SELECT
     ) AS collaborators_40h,
     SUM(calendar_business_days) AS calendar_business_days,
     SUM(sprint_window_business_days) AS sprint_window_business_days,
+    SUM(snapshot_business_days) AS snapshot_business_days,
     SUM(flow_observed_business_days) AS flow_observed_business_days,
     SUM(flow_non_working_days) AS flow_non_working_days,
     SUM(flow_non_working_days_applied) AS flow_non_working_days_applied,
     SUM(business_days) AS business_days,
     SUM(calendar_capacity_hours) AS calendar_capacity_hours,
+    SUM(snapshot_capacity_hours) AS snapshot_capacity_hours,
     SUM(flow_non_working_hours) AS flow_non_working_hours,
     SUM(capacity_hours) AS capacity_hours,
     SUM(capacity_hours) FILTER (
@@ -231,12 +268,14 @@ GROUP BY
     sprint_name,
     sprint_start,
     sprint_end,
+    sprint_completed_at,
+    effective_sprint_end_date,
     sprint_state,
     squad_id,
     squad_name;
 
 COMMENT ON VIEW public.vw_dashboard_sprint_capacity IS
-    'Grão: Sprint × Squad. capacity_hours é a capacidade efetiva após os dias não trabalhados identificados no Flow; calendar_capacity_hours preserva o valor teórico.';
+    'Grão: Sprint × Squad. capacity_hours é a capacidade efetiva na janela real da Sprint; snapshot_capacity_hours preserva o cálculo materializado anteriormente.';
 
 CREATE VIEW public.vw_dashboard_sprint_efficiency AS
 SELECT
@@ -244,6 +283,8 @@ SELECT
     sprint_name,
     sprint_start,
     sprint_end,
+    sprint_completed_at,
+    effective_sprint_end_date,
     sprint_state,
     squad_id,
     squad_name,
@@ -253,11 +294,13 @@ SELECT
     COUNT(*) AS collaborators,
     SUM(calendar_business_days) AS calendar_business_days,
     SUM(sprint_window_business_days) AS sprint_window_business_days,
+    SUM(snapshot_business_days) AS snapshot_business_days,
     SUM(flow_observed_business_days) AS flow_observed_business_days,
     SUM(flow_non_working_days) AS flow_non_working_days,
     SUM(flow_non_working_days_applied) AS flow_non_working_days_applied,
     SUM(business_days) AS business_days,
     SUM(calendar_capacity_hours) AS calendar_capacity_hours,
+    SUM(snapshot_capacity_hours) AS snapshot_capacity_hours,
     SUM(flow_non_working_hours) AS flow_non_working_hours,
     SUM(capacity_hours) AS capacity_hours,
     SUM(hours_logged) AS hours_logged,
@@ -292,6 +335,8 @@ GROUP BY
     sprint_name,
     sprint_start,
     sprint_end,
+    sprint_completed_at,
+    effective_sprint_end_date,
     sprint_state,
     squad_id,
     squad_name,

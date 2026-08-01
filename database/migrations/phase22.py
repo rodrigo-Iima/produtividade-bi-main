@@ -25,9 +25,7 @@ WITH point_by_user_sprint AS (
      AND p.work_date >= (
          c.sprint_start AT TIME ZONE 'America/Sao_Paulo'
      )::DATE
-     AND p.work_date < (
-         c.sprint_end AT TIME ZONE 'America/Sao_Paulo'
-     )::DATE
+     AND p.work_date < c.effective_sprint_end_date
     GROUP BY c.sprint_id, c.user_id
 )
 SELECT
@@ -35,6 +33,8 @@ SELECT
     c.sprint_name,
     c.sprint_start,
     c.sprint_end,
+    c.sprint_completed_at,
+    c.effective_sprint_end_date,
     c.sprint_state,
     c.squad_id,
     c.squad_name,
@@ -44,6 +44,7 @@ SELECT
     SUM(c.flow_non_working_days) AS flow_non_working_days,
     SUM(c.flow_non_working_days_applied) AS flow_non_working_days_applied,
     SUM(c.calendar_capacity_hours) AS theoretical_timebox_hours,
+    SUM(c.snapshot_capacity_hours) AS snapshot_timebox_hours,
     SUM(c.flow_non_working_hours) AS timebox_excluded_hours,
     SUM(c.capacity_hours) AS timebox_hours,
     SUM(p.hours_worked) AS hours_worked,
@@ -71,12 +72,14 @@ GROUP BY
     c.sprint_name,
     c.sprint_start,
     c.sprint_end,
+    c.sprint_completed_at,
+    c.effective_sprint_end_date,
     c.sprint_state,
     c.squad_id,
     c.squad_name;
 
 COMMENT ON VIEW public.vw_dashboard_sprint_timebox IS
-    'Grão: Sprint × Squad. timebox_hours é a capacidade produtiva; hours_worked vem das marcações Flow; hours_logged vem dos lançamentos Clockify.';
+    'Grão: Sprint × Squad. timebox_hours usa a janela real de conclusão; hours_worked vem das marcações Flow; hours_logged vem dos lançamentos Clockify.';
 
 DO $grant_timebox_views$
 BEGIN

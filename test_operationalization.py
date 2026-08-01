@@ -88,6 +88,7 @@ def test_complete_schema_creates_dashboard_dependencies_before_capacity_views(
         "ensure_phase17_schema",
         "ensure_phase18_schema",
         "ensure_phase20_schema",
+        "ensure_phase23_schema",
         "ensure_phase19_schema",
         "ensure_phase3_views",
         "ensure_phase4_schema",
@@ -110,6 +111,9 @@ def test_complete_schema_creates_dashboard_dependencies_before_capacity_views(
     )
     assert events.index("ensure_phase20_schema") < events.index(
         "ensure_phase19_schema"
+    )
+    assert events.index("ensure_phase23_schema") < events.index(
+        "ensure_phase21_schema"
     )
     assert events[-1] == "ensure_phase22_schema"
 
