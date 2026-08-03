@@ -1,8 +1,9 @@
 # OKR de tempo de resolução de Bugs
 
 Este projeto busca dados do Jira e do Clockify, relaciona os lançamentos aos
-Bugs e alimenta uma view HTML + CSS hospedada no Vercel. Não há PostgreSQL,
-Docker, Metabase ou dependência de servidor local no fluxo hospedado.
+Bugs e alimenta uma view HTML + CSS publicada como site estático. Não há
+PostgreSQL, Docker, Metabase ou dependência de servidor local no fluxo
+publicado.
 
 ## Métrica
 
@@ -84,25 +85,25 @@ O arquivo gerado contém a definição da métrica, os Bugs, os lançamentos
 normalizados, os relacionamentos e as médias mensais. A camada visual será
 consumida pela view visual em `view/`.
 
-## Execução hospedada no Vercel
+## Automação e publicação com GitHub Actions
 
-O endpoint `/api/cron` executa o mesmo pipeline e grava um snapshot compacto no
-Vercel Blob. O endpoint `/api/snapshot` entrega o snapshot mais recente para a
-view. O agendamento está configurado para `0 10 * * 5` em UTC, equivalente a
-sexta-feira às 07:00 em `America/Sao_Paulo`. O ETL permanece em Python, e a
-persistência é delegada internamente a `api/blob.js`, que usa o SDK oficial
-`@vercel/blob` e o OIDC do Vercel.
+O workflow `.github/workflows/publish-okr.yml` executa o pipeline toda sexta-feira
+às 07:00 em `America/Sao_Paulo` e também pode ser iniciado manualmente em
+**Actions → Atualizar e publicar OKR → Run workflow**. O snapshot gerado é
+publicado como `outputs/latest.json` junto da view no GitHub Pages; ele não é
+gravado no histórico do repositório.
 
-No projeto Vercel, configure as credenciais do Jira e do Clockify, além de:
+Na primeira configuração do repositório:
 
-- Blob conectado ao projeto: as conexões novas usam OIDC automaticamente. O
-  projeto não precisa de `BLOB_READ_WRITE_TOKEN` quando o store estiver em OIDC;
-  para um store legado, essa variável ainda pode ser informada;
-- `CRON_SECRET`: segredo aleatório com pelo menos 16 caracteres.
+1. Em **Settings → Pages**, selecione **GitHub Actions** como fonte de build e
+   publicação.
+2. Em **Settings → Secrets and variables → Actions**, cadastre os secrets
+   `JIRA_URL`, `JIRA_EMAIL`, `JIRA_TOKEN`, `CLOCKIFY_API_KEY` e
+   `CLOCKIFY_WORKSPACE_ID`.
+3. Execute o workflow manualmente para validar a primeira publicação.
 
-Depois do primeiro deploy, execute o endpoint `/api/cron` uma vez com o
-header `Authorization: Bearer <CRON_SECRET>` para gerar o primeiro snapshot.
-As execuções seguintes serão feitas pelo Cron.
+A URL normalmente será `https://<owner>.github.io/<repository>/view/`. O site
+carrega sempre o último snapshot publicado, mesmo entre duas execuções semanais.
 
 ## View local
 

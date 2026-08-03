@@ -33,15 +33,16 @@ function getDataUrl() {
   if (requested) return requested;
 
   const isLocal = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
-  if (!isLocal) return "/api/snapshot";
-
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
-  return `../outputs/okr_${today}.json`;
+  const snapshotPath = isLocal
+    ? `../outputs/okr_${today}.json`
+    : "../outputs/latest.json";
+  return new URL(snapshotPath, window.location.href).toString();
 }
 
 function formatHours(value, digits = 1) {

@@ -17,5 +17,10 @@ Para consultar um snapshot específico:
 http://localhost:8000/view/?data=../outputs/okr_2026-07-24.json
 ```
 
-No Vercel, a view usa automaticamente `/api/snapshot`. O endpoint é alimentado
-pelo Cron semanal e não depende de arquivos locais.
+No GitHub Pages, o workflow publica o snapshot atual como
+`outputs/latest.json`, e a view o carrega automaticamente. O endereço da view
+será semelhante a:
+
+```text
+https://<owner>.github.io/<repository>/view/
+```

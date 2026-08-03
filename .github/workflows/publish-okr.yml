@@ -1,0 +1,99 @@
+name: Atualizar e publicar OKR
+
+on:
+  schedule:
+    - cron: "0 10 * * 5"
+  workflow_dispatch:
+    inputs:
+      as_of:
+        description: "Data de corte do snapshot (YYYY-MM-DD); vazio usa hoje"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  refresh-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      JIRA_URL: ${{ secrets.JIRA_URL }}
+      JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+      JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+      CLOCKIFY_API_KEY: ${{ secrets.CLOCKIFY_API_KEY }}
+      CLOCKIFY_WORKSPACE_ID: ${{ secrets.CLOCKIFY_WORKSPACE_ID }}
+      JIRA_ESTIMATE_FIELD: timeoriginalestimate
+      CLOCKIFY_PAGE_SIZE: "1000"
+      CLOCKIFY_DEV_TAG: Dev
+      OKR_YEAR: "2026"
+      OKR_TIMEZONE: America/Sao_Paulo
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: python -m pip install -r requirements.txt
+
+      - name: Definir data do snapshot
+        id: snapshot_date
+        shell: bash
+        env:
+          REQUESTED_AS_OF: ${{ inputs.as_of || '' }}
+        run: |
+          set -euo pipefail
+          AS_OF="$REQUESTED_AS_OF"
+          if [ -z "$AS_OF" ]; then
+            AS_OF="$(TZ="$OKR_TIMEZONE" date +%F)"
+          fi
+          if [[ ! "$AS_OF" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "Data inválida: $AS_OF" >&2
+            exit 1
+          fi
+          echo "as_of=$AS_OF" >> "$GITHUB_OUTPUT"
+
+      - name: Gerar snapshot
+        run: python scripts/run_pipeline.py --as-of "${{ steps.snapshot_date.outputs.as_of }}"
+
+      - name: Preparar site estático
+        shell: bash
+        env:
+          AS_OF: ${{ steps.snapshot_date.outputs.as_of }}
+        run: |
+          set -euo pipefail
+          rm -rf .pages
+          mkdir -p .pages/outputs
+          cp -R view .pages/view
+          cp "outputs/okr_${AS_OF}.json" .pages/outputs/latest.json
+          printf '%s\n' \
+            '<!doctype html>' \
+            '<html lang="pt-BR"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./view/"><title>OKR</title></head>' \
+            '<body><a href="./view/">Abrir dashboard OKR</a></body></html>' \
+            > .pages/index.html
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Preparar artefato do site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .pages
+
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
