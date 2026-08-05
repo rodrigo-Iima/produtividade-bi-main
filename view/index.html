@@ -21,9 +21,18 @@
         <div class="eyebrow">Q3 2026 · IA NO DESENVOLVIMENTO</div>
         <h1 id="page-title">Tempo de desenvolvimento em Bugs</h1>
         <p>
-          Compara o desempenho atual com a base histórica de janeiro a maio.
-          Junho aparece nos visuais, mas não participa dos KPIs.
+          Compara tickets concluídos com a base histórica de janeiro a maio.
+          Alterne entre Bugs e Adaptativas; junho aparece nos visuais, mas não
+          participa dos KPIs.
         </p>
+        <div class="view-switcher" role="tablist" aria-label="Tipo de ticket">
+          <button class="view-switcher__button is-active" type="button" role="tab" data-view="bug" aria-selected="true">
+            Bugs concluídos
+          </button>
+          <button class="view-switcher__button" type="button" role="tab" data-view="adaptativa" aria-selected="false">
+            Adaptativas concluídas
+          </button>
+        </div>
       </section>
 
       <section class="metric-grid" aria-label="KPIs atuais comparados à base histórica">
@@ -93,7 +102,7 @@
               <tr>
                 <th scope="col">Mês</th>
                 <th scope="col">Período</th>
-                <th scope="col">Bugs Dev / Jira</th>
+                <th scope="col" id="ticket-ratio-heading">Bugs Dev / Jira</th>
                 <th scope="col">Cobertura</th>
                 <th scope="col">Estimado</th>
                 <th scope="col">Gasto real</th>
@@ -187,6 +196,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
-    <script type="module" src="./app.js?v=okr-20260803"></script>
+    <script type="module" src="./app.js?v=okr-20260805"></script>
   </body>
 </html>

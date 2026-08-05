@@ -18,7 +18,9 @@ http://localhost:8000/view/?data=../outputs/okr_2026-07-24.json
 ```
 
 No GitHub Pages, o workflow publica o snapshot atual como
-`outputs/latest.json`, e a view o carrega automaticamente. O endereço da view
+`outputs/latest.json`, e a view o carrega automaticamente. O painel possui
+seletor separado para `Bugs concluídos` e `Adaptativas concluídas`; os KPIs,
+gráfico e tabela são recalculados para o tipo selecionado. O endereço da view
 será semelhante a:
 
 ```text

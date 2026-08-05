@@ -20,6 +20,7 @@ class JiraBug:
     summary: str
     created_at: datetime
     estimate_hours: float | None
+    issue_type: str = "Bug"
     status: str | None = None
     jira_logged_hours: float | None = None
 
@@ -84,6 +85,7 @@ class TicketClockifyRow:
     """One Jira ticket with at least one related Clockify entry."""
 
     issue_key: str
+    issue_type: str
     summary: str
     created_at: datetime
     status: str | None
@@ -113,13 +115,19 @@ def parse_jira_bugs(
     *,
     target_year: int,
     estimate_field: str,
+    allowed_issue_types: Iterable[str] = ("Bug", "Adaptativa"),
+    completed_status: str = "Concluído",
 ) -> list[JiraBug]:
-    """Normalize Jira search results and keep only Bugs created in the target year."""
+    """Normalize completed Jira tickets in the configured OKR scope."""
+    normalized_types = {value.casefold() for value in allowed_issue_types}
     bugs: list[JiraBug] = []
     for issue in issues:
         fields = issue.get("fields") or {}
-        issue_type = (fields.get("issuetype") or {}).get("name")
-        if issue_type and issue_type.casefold() != "bug":
+        issue_type = str((fields.get("issuetype") or {}).get("name") or "").strip()
+        if not issue_type or issue_type.casefold() not in normalized_types:
+            continue
+        status = str((fields.get("status") or {}).get("name") or "").strip()
+        if not status or status.casefold() != completed_status.casefold():
             continue
 
         issue_key = str(issue.get("key") or "").strip().upper()
@@ -135,7 +143,8 @@ def parse_jira_bugs(
                 summary=str(fields.get("summary") or ""),
                 created_at=created_at,
                 estimate_hours=_estimate_hours(fields, estimate_field),
-                status=(fields.get("status") or {}).get("name"),
+                issue_type=issue_type,
+                status=status,
                 jira_logged_hours=_jira_logged_hours(fields),
             )
         )
@@ -431,6 +440,7 @@ def build_ticket_clockify_table(
         rows.append(
             TicketClockifyRow(
                 issue_key=bug.issue_key,
+                issue_type=bug.issue_type,
                 summary=bug.summary,
                 created_at=bug.created_at,
                 status=bug.status,

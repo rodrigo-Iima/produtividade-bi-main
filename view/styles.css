@@ -118,6 +118,43 @@ h1 {
   line-height: 1.55;
 }
 
+.view-switcher {
+  display: inline-flex;
+  gap: 4px;
+  margin-top: 24px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.view-switcher__button {
+  min-height: 34px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.view-switcher__button:hover {
+  color: var(--ink);
+  background: var(--surface-subtle);
+}
+
+.view-switcher__button.is-active {
+  color: #fff;
+  background: var(--ink);
+}
+
+.view-switcher__button:focus-visible {
+  outline: 3px solid var(--accent-soft);
+  outline-offset: 1px;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

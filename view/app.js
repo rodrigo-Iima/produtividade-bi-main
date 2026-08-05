@@ -1,5 +1,7 @@
 const state = {
   data: null,
+  viewKey: "bug",
+  view: null,
   tickets: [],
   chart: null,
 };
@@ -97,7 +99,7 @@ function setText(selector, value) {
 }
 
 function periodMetric(period) {
-  return state.data.periods.find((item) => item.period === period);
+  return state.view.periods.find((item) => item.period === period);
 }
 
 function ticketPeriod(ticket) {
@@ -148,6 +150,10 @@ function renderHoursTrend(selector, current, baseline, favorableDirection = null
 }
 
 function renderSummary() {
+  const viewLabel = state.view.label;
+  const singularLabel = state.view.issue_type === "Bug" ? "Bug" : "Adaptativa";
+  const completedWord = state.view.issue_type === "Bug" ? "concluídos" : "concluídas";
+  const singularCompletedWord = state.view.issue_type === "Bug" ? "concluído" : "concluída";
   const baseline = periodMetric("baseline");
   const current = periodMetric("current");
   if (!baseline || !current) {
@@ -157,7 +163,7 @@ function renderSummary() {
   setText("#actual-current", formatHours(current.avg_actual_hours));
   setText(
     "#actual-base",
-    `Base: ${formatHours(baseline.avg_actual_hours)} · ${baseline.bugs_with_clockify} Bugs`,
+    `Base: ${formatHours(baseline.avg_actual_hours)} · ${baseline.bugs_with_clockify} ${viewLabel}`,
   );
   renderPercentTrend(
     "#actual-trend",
@@ -169,7 +175,7 @@ function renderSummary() {
   setText("#estimate-current", formatHours(current.avg_estimate_hours));
   setText(
     "#estimate-base",
-    `Base: ${formatHours(baseline.avg_estimate_hours)} · ${baseline.bugs_with_estimate} Bugs`,
+    `Base: ${formatHours(baseline.avg_estimate_hours)} · ${baseline.bugs_with_estimate} ${viewLabel}`,
   );
   renderPercentTrend(
     "#estimate-trend",
@@ -192,7 +198,7 @@ function renderSummary() {
   setText("#coverage-current", formatPercent(current.coverage_pct));
   setText(
     "#coverage-base",
-    `Base: ${formatPercent(baseline.coverage_pct)} · ${baseline.bugs_with_clockify}/${baseline.bugs_in_jira} Bugs`,
+    `Base: ${formatPercent(baseline.coverage_pct)} · ${baseline.bugs_with_clockify}/${baseline.bugs_in_jira} ${viewLabel}`,
   );
   const coverageDelta = current.coverage_pct - baseline.coverage_pct;
   const coverageTrend = $("#coverage-trend");
@@ -200,25 +206,31 @@ function renderSummary() {
   trendTone(coverageTrend, coverageDelta > 0 ? true : coverageDelta < 0 ? false : null);
 
   const asOf = state.data.definition?.as_of_date;
-  const currentBugs = state.data.bugs.filter((bug) => ticketPeriod(bug) === "current");
-  const concludedCurrent = currentBugs.filter((bug) => bug.status === "Concluído").length;
+  setText("#page-title", `Tempo de desenvolvimento em ${viewLabel.toLowerCase()} ${completedWord}`);
+  document.title = `OKR · Tempo de desenvolvimento em ${viewLabel}`;
+  setText("#tickets-title", `${viewLabel} ${completedWord} com lançamentos Dev`);
+  setText("#ticket-ratio-heading", `${viewLabel} Dev / ${viewLabel} Jira`);
   setText("#snapshot-label", asOf ? `SNAPSHOT · ${formatDate(`${asOf}T12:00:00Z`)}` : "SNAPSHOT");
   setText(
     "#measurement-note",
-    `Atual: ${current.bugs_with_clockify}/${current.bugs_in_jira} Bugs com Dev e ${concludedCurrent}/${current.bugs_in_jira} concluídos · Base: ${baseline.bugs_with_clockify}/${baseline.bugs_in_jira} com Dev · Junho fora dos KPIs`,
+    `Atual: ${current.bugs_with_clockify}/${current.bugs_in_jira} ${viewLabel} ${completedWord} com Dev · Base: ${baseline.bugs_with_clockify}/${baseline.bugs_in_jira} com Dev · Junho fora dos KPIs`,
   );
   setText(
     "#trend-subtitle",
-    `Horas Clockify com tag Dev por Bug · linha de base real: ${formatHours(baseline.avg_actual_hours)} · junho visível e fora dos KPIs`,
+    `Horas Clockify com tag Dev por ${singularLabel} ${singularCompletedWord} · linha de base real: ${formatHours(baseline.avg_actual_hours)} · junho visível e fora dos KPIs`,
+  );
+  setText(
+    "#data-rule",
+    `Gasto real = horas Clockify com tag Dev · Cobertura = ${viewLabel} com Dev / ${viewLabel} Jira do período.`,
   );
   setText(
     "#data-source",
-    `${current.matched_entries + baseline.matched_entries} lançamentos Dev mapeados · atualização ${formatDate(`${asOf}T12:00:00Z`)}`,
+    `${viewLabel}: ${current.matched_entries + baseline.matched_entries} lançamentos Dev mapeados · atualização ${formatDate(`${asOf}T12:00:00Z`)}`,
   );
 }
 
 function measurementMonths() {
-  return [...state.data.monthly].sort((a, b) => a.month.localeCompare(b.month));
+  return [...state.view.monthly].sort((a, b) => a.month.localeCompare(b.month));
 }
 
 function renderChart() {
@@ -346,6 +358,7 @@ function renderMonthlyTable() {
 
 function populateMonthFilter() {
   const select = $("#month-filter");
+  select.innerHTML = '<option value="all">Todos os meses</option>';
   const months = [...new Set(state.tickets.map((ticket) => ticket.created_at.slice(0, 7)))]
     .sort()
     .reverse();
@@ -385,7 +398,8 @@ function renderTickets() {
   const body = $("#tickets-body");
   const emptyState = $("#empty-state");
   const tickets = filteredTickets();
-  setText("#ticket-count", `${tickets.length} de ${state.tickets.length} tickets medidos`);
+  const measuredWord = state.view.issue_type === "Bug" ? "medidos" : "medidas";
+  setText("#ticket-count", `${tickets.length} de ${state.tickets.length} ${state.view.label.toLowerCase()} ${measuredWord}`);
   emptyState.hidden = tickets.length > 0;
   body.innerHTML = tickets.map((ticket) => `
     <tr>
@@ -416,6 +430,34 @@ function bindFilters() {
   });
 }
 
+function setView(viewKey) {
+  const view = state.data.views?.[viewKey];
+  if (!view) throw new Error(`View não encontrada: ${viewKey}`);
+
+  state.viewKey = viewKey;
+  state.view = view;
+  state.tickets = [...(view.tickets_with_clockify ?? [])]
+    .filter((ticket) => ticketPeriod(ticket) !== "excluded");
+
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    const isActive = button.dataset.view === viewKey;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", String(isActive));
+  });
+
+  renderSummary();
+  renderChart();
+  renderMonthlyTable();
+  populateMonthFilter();
+  renderTickets();
+}
+
+function bindViewSelector() {
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.addEventListener("click", () => setView(button.dataset.view));
+  });
+}
+
 function showError(error) {
   const loadState = $("#load-state");
   loadState.classList.add("is-error");
@@ -433,14 +475,12 @@ async function init() {
     if (state.data.definition?.clockify_required_tag !== "Dev") {
       throw new Error("O snapshot ainda não usa o filtro Clockify Dev. Execute o pipeline atualizado.");
     }
-    state.tickets = [...(state.data.tickets_with_clockify ?? [])]
-      .filter((ticket) => ticketPeriod(ticket) !== "excluded");
-    renderSummary();
-    renderChart();
-    renderMonthlyTable();
-    populateMonthFilter();
+    if (!state.data.views?.bug || !state.data.views?.adaptativa) {
+      throw new Error("Snapshot sem as views separadas de Bugs e Adaptativas.");
+    }
+    bindViewSelector();
     bindFilters();
-    renderTickets();
+    setView("bug");
     $("#load-state").remove();
   } catch (error) {
     showError(error);

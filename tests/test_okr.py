@@ -10,6 +10,7 @@ from okr.domain import (
     parse_clockify_entries,
     parse_jira_bugs,
 )
+from okr.pipeline import RawInputs, analyze_inputs, result_to_payload
 
 
 class OkrDomainTests(unittest.TestCase):
@@ -33,6 +34,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "One",
                         "created": "2026-02-10T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 7200,
                     },
                 },
@@ -42,6 +44,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "Two",
                         "created": "2026-02-11T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 3600,
                     },
                 },
@@ -119,6 +122,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "One",
                         "created": "2026-02-10T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 7200,
                     },
                 },
@@ -128,6 +132,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "Two",
                         "created": "2026-02-20T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 7200,
                     },
                 },
@@ -173,6 +178,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "One",
                         "created": "2026-02-10T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 7200,
                     },
                 },
@@ -182,6 +188,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "Two",
                         "created": "2026-02-11T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 3600,
                     },
                 },
@@ -227,6 +234,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "Jira is larger",
                         "created": "2026-02-10T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 7200,
                         "timespent": 10800,
                     },
@@ -237,6 +245,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "Clockify is larger",
                         "created": "2026-02-11T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 3600,
                         "timespent": 3600,
                     },
@@ -294,6 +303,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "Baseline mapped",
                         "created": "2026-01-10T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 7200,
                     },
                 },
@@ -303,6 +313,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "Baseline without Dev entry",
                         "created": "2026-05-10T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 21600,
                     },
                 },
@@ -312,6 +323,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "June excluded",
                         "created": "2026-06-10T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 36000,
                     },
                 },
@@ -321,6 +333,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "Current",
                         "created": "2026-07-10T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 10800,
                     },
                 },
@@ -389,6 +402,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "Has estimate",
                         "created": "2026-02-10T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 7200,
                         "timespent": None,
                     },
@@ -399,6 +413,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "Empty numeric fields",
                         "created": "2026-02-11T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": "",
                         "timespent": "",
                     },
@@ -450,6 +465,138 @@ class OkrDomainTests(unittest.TestCase):
         self.assertIsNone(empty_row.jira_logged_hours)
         self.assertIsNone(empty_row.variation_hours)
 
+    def test_keeps_only_completed_bug_and_adaptativa_tickets(self):
+        tickets = parse_jira_bugs(
+            [
+                {
+                    "key": "BUG-1",
+                    "fields": {
+                        "summary": "Concluído",
+                        "created": "2026-02-10T12:00:00.000+0000",
+                        "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
+                        "timeoriginalestimate": 3600,
+                    },
+                },
+                {
+                    "key": "BUG-2",
+                    "fields": {
+                        "summary": "Ainda em Dev",
+                        "created": "2026-02-11T12:00:00.000+0000",
+                        "issuetype": {"name": "Bug"},
+                        "status": {"name": "Dev"},
+                        "timeoriginalestimate": 3600,
+                    },
+                },
+                {
+                    "key": "ADP-1",
+                    "fields": {
+                        "summary": "Adaptativa concluída",
+                        "created": "2026-02-12T12:00:00.000+0000",
+                        "issuetype": {"name": "Adaptativa"},
+                        "status": {"name": "Concluído"},
+                        "timeoriginalestimate": 7200,
+                    },
+                },
+                {
+                    "key": "IMP-1",
+                    "fields": {
+                        "summary": "Outro tipo",
+                        "created": "2026-02-13T12:00:00.000+0000",
+                        "issuetype": {"name": "Melhoria"},
+                        "status": {"name": "Concluído"},
+                        "timeoriginalestimate": 7200,
+                    },
+                },
+            ],
+            target_year=2026,
+            estimate_field="timeoriginalestimate",
+        )
+
+        self.assertEqual([ticket.issue_key for ticket in tickets], ["BUG-1", "ADP-1"])
+        self.assertEqual([ticket.issue_type for ticket in tickets], ["Bug", "Adaptativa"])
+        self.assertTrue(all(ticket.status == "Concluído" for ticket in tickets))
+
+    def test_serializes_independent_views_for_each_ticket_type(self):
+        inputs = RawInputs(
+            jql='issuetype in ("Bug", "Adaptativa") AND status = "Concluído"',
+            as_of_date=date(2026, 7, 24),
+            jira_issues=(
+                {
+                    "key": "BUG-1",
+                    "fields": {
+                        "summary": "Bug concluído",
+                        "created": "2026-02-10T12:00:00.000+0000",
+                        "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
+                        "timeoriginalestimate": 3600,
+                    },
+                },
+                {
+                    "key": "ADP-1",
+                    "fields": {
+                        "summary": "Adaptativa concluída",
+                        "created": "2026-07-10T12:00:00.000+0000",
+                        "issuetype": {"name": "Adaptativa"},
+                        "status": {"name": "Concluído"},
+                        "timeoriginalestimate": 7200,
+                    },
+                },
+            ),
+            clockify_entries=(
+                {
+                    "_id": "entry-bug",
+                    "description": "BUG-1",
+                    "tags": [{"name": "Dev"}],
+                    "timeInterval": {
+                        "start": "2026-02-11T10:00:00.000Z",
+                        "end": "2026-02-11T11:00:00.000Z",
+                    },
+                },
+                {
+                    "_id": "entry-adaptativa",
+                    "description": "ADP-1",
+                    "tags": [{"name": "Dev"}],
+                    "timeInterval": {
+                        "start": "2026-07-11T10:00:00.000Z",
+                        "end": "2026-07-11T12:00:00.000Z",
+                    },
+                },
+            ),
+        )
+        result = analyze_inputs(
+            inputs,
+            target_year=2026,
+            timezone_name="America/Sao_Paulo",
+            estimate_field="timeoriginalestimate",
+        )
+        payload = result_to_payload(
+            result,
+            jql=inputs.jql,
+            target_year=2026,
+            timezone_name="America/Sao_Paulo",
+            estimate_field="timeoriginalestimate",
+            as_of_date=inputs.as_of_date,
+        )
+
+        self.assertEqual(set(payload["views"]), {"bug", "adaptativa"})
+        self.assertEqual(
+            [ticket["issue_key"] for ticket in payload["views"]["bug"]["bugs"]],
+            ["BUG-1"],
+        )
+        self.assertEqual(
+            [ticket["issue_key"] for ticket in payload["views"]["adaptativa"]["bugs"]],
+            ["ADP-1"],
+        )
+        self.assertEqual(
+            payload["views"]["bug"]["tickets_with_clockify"][0]["spent_hours"],
+            1.0,
+        )
+        self.assertEqual(
+            payload["views"]["adaptativa"]["tickets_with_clockify"][0]["spent_hours"],
+            2.0,
+        )
+
     def test_zero_estimate_is_treated_as_missing(self):
         bugs = parse_jira_bugs(
             [
@@ -459,6 +606,7 @@ class OkrDomainTests(unittest.TestCase):
                         "summary": "Zero is not a usable estimate",
                         "created": "2026-07-10T12:00:00.000+0000",
                         "issuetype": {"name": "Bug"},
+                        "status": {"name": "Concluído"},
                         "timeoriginalestimate": 0,
                     },
                 }
