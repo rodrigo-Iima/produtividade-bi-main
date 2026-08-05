@@ -24,6 +24,7 @@ from config.settings import (
     OKR_TIMEZONE,
     OKR_TICKET_TYPES,
     OKR_YEAR,
+    build_okr_adaptativa_jql,
     build_okr_bugs_jql,
     execution_date,
 )
@@ -62,11 +63,13 @@ class RawInputs:
     as_of_date: date
     jira_issues: tuple[dict[str, Any], ...]
     clockify_entries: tuple[dict[str, Any], ...]
+    adaptativa_jql: str | None = None
 
 
 def run_analysis(
     *,
     jql: str | None = None,
+    adaptativa_jql: str | None = None,
     target_year: int = OKR_YEAR,
     timezone_name: str = OKR_TIMEZONE,
     estimate_field: str = JIRA_ESTIMATE_FIELD,
@@ -75,8 +78,10 @@ def run_analysis(
     """Run the complete API-only analysis for one calendar year."""
     effective_as_of_date = as_of_date or execution_date()
     effective_jql = jql or build_okr_bugs_jql(effective_as_of_date)
+    effective_adaptativa_jql = adaptativa_jql or build_okr_adaptativa_jql(effective_as_of_date)
     inputs = fetch_inputs(
         jql=effective_jql,
+        adaptativa_jql=effective_adaptativa_jql,
         target_year=target_year,
         timezone_name=timezone_name,
         as_of_date=effective_as_of_date,
@@ -138,6 +143,7 @@ def analyze_inputs(
 def fetch_inputs(
     *,
     jql: str | None = None,
+    adaptativa_jql: str | None = None,
     target_year: int = OKR_YEAR,
     timezone_name: str = OKR_TIMEZONE,
     as_of_date: date | None = None,
@@ -146,6 +152,7 @@ def fetch_inputs(
     _validate_configuration()
     effective_as_of_date = as_of_date or execution_date()
     effective_jql = jql or build_okr_bugs_jql(effective_as_of_date)
+    effective_adaptativa_jql = adaptativa_jql or build_okr_adaptativa_jql(effective_as_of_date)
     estimate_fields = [
         "summary",
         "issuetype",
@@ -159,10 +166,18 @@ def fetch_inputs(
     if JIRA_ESTIMATE_FIELD not in estimate_fields:
         estimate_fields.append(JIRA_ESTIMATE_FIELD)
 
-    jira_issues = JiraClient().search(
+    jira_client = JiraClient()
+    jira_issues = jira_client.search(
         jql=effective_jql,
         fields=estimate_fields,
         max_results=100,
+    )
+    jira_issues.extend(
+        jira_client.search(
+            jql=effective_adaptativa_jql,
+            fields=estimate_fields,
+            max_results=100,
+        )
     )
     clockify_entries = _fetch_clockify_entries(
         ClockifyClient(),
@@ -175,6 +190,7 @@ def fetch_inputs(
         as_of_date=effective_as_of_date,
         jira_issues=tuple(jira_issues),
         clockify_entries=tuple(clockify_entries),
+        adaptativa_jql=effective_adaptativa_jql,
     )
 
 
@@ -190,6 +206,11 @@ def raw_inputs_to_payload(
             "year": target_year,
             "as_of_date": inputs.as_of_date.isoformat(),
             "jql": jql or inputs.jql,
+            "jql_by_type": {
+                "Bug": jql or inputs.jql,
+                "Adaptativa": inputs.adaptativa_jql
+                or build_okr_adaptativa_jql(inputs.as_of_date),
+            },
             "jira_issue_count": len(inputs.jira_issues),
             "clockify_entry_count": len(inputs.clockify_entries),
             "time_fields_interpretation": {
@@ -206,6 +227,7 @@ def result_to_payload(
     result: AnalysisResult,
     *,
     jql: str,
+    adaptativa_jql: str | None = None,
     target_year: int,
     timezone_name: str,
     estimate_field: str,
@@ -213,12 +235,17 @@ def result_to_payload(
 ) -> dict[str, Any]:
     """Serialize the analysis with an independent payload for each ticket type."""
     effective_as_of_date = as_of_date or execution_date()
+    effective_adaptativa_jql = adaptativa_jql or build_okr_adaptativa_jql(effective_as_of_date)
     definition = {
         "year": target_year,
         "as_of_date": effective_as_of_date.isoformat(),
         "timezone": timezone_name,
         "month_basis": "Jira ticket creation month",
         "jql": jql,
+        "jql_by_type": {
+            "Bug": jql,
+            "Adaptativa": effective_adaptativa_jql,
+        },
         "estimate_field": estimate_field,
         "ticket_types": list(OKR_TICKET_TYPES),
         "completed_status": OKR_COMPLETED_STATUS,
@@ -344,6 +371,7 @@ def result_to_dashboard_payload(
     result: AnalysisResult,
     *,
     jql: str,
+    adaptativa_jql: str | None = None,
     target_year: int,
     timezone_name: str,
     estimate_field: str,
@@ -353,6 +381,7 @@ def result_to_dashboard_payload(
     payload = result_to_payload(
         result,
         jql=jql,
+        adaptativa_jql=adaptativa_jql,
         target_year=target_year,
         timezone_name=timezone_name,
         estimate_field=estimate_field,

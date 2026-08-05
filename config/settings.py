@@ -38,18 +38,35 @@ def execution_date() -> date:
     return datetime.now(ZoneInfo(OKR_TIMEZONE)).date()
 
 
-def build_okr_bugs_jql(as_of_date: date | None = None) -> str:
-    """Build the Jira scope with a runtime upper bound."""
-    end_date = as_of_date or execution_date()
-    issue_types = ", ".join(f'"{issue_type}"' for issue_type in OKR_TICKET_TYPES)
+def _build_okr_status_and_date_filters(as_of_date: date) -> str:
     return (
-        f"project = ZG AND issuetype in ({issue_types}) "
         f"AND status = {OKR_COMPLETED_STATUS_JQL} "
         f'AND created >= "{OKR_YEAR}-01-01" '
-        f'AND created <= "{end_date.isoformat()}" '
+        f'AND created <= "{as_of_date.isoformat()}" '
         "AND originalEstimate IS NOT EMPTY ORDER BY created DESC"
+    )
+
+
+def build_okr_bugs_jql(as_of_date: date | None = None) -> str:
+    """Build the Jira scope for completed Bugs with a runtime upper bound."""
+    end_date = as_of_date or execution_date()
+    return (
+        'project = ZG AND issuetype = "Bug" '
+        f"{_build_okr_status_and_date_filters(end_date)}"
+    )
+
+
+def build_okr_adaptativa_jql(as_of_date: date | None = None) -> str:
+    """Build the Jira scope for completed Operadoras Adaptativas."""
+    end_date = as_of_date or execution_date()
+    return (
+        '((project = ZGT AND "squad[dropdown]" = "ZGT - Novas Operadoras") '
+        'OR (project = ZG AND "squad[dropdown]" = Operadoras)) '
+        'AND issuetype = "Adaptativa" '
+        f"{_build_okr_status_and_date_filters(end_date)}"
     )
 
 
 # An explicit environment override remains available for exceptional reruns.
 OKR_BUGS_JQL = _env("OKR_BUGS_JQL") or build_okr_bugs_jql()
+OKR_ADAPTATIVA_JQL = _env("OKR_ADAPTATIVA_JQL") or build_okr_adaptativa_jql()

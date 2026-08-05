@@ -7,11 +7,12 @@ publicado.
 
 ## Métrica
 
-- **Escopo Jira:** o padrão seleciona o projeto `ZG`, tickets dos tipos `Bug` e
-  `Adaptativa`, com status concluído, criados desde 01/01/2026 até a data da
-  execução e com estimativa informada. A JQL usa o alias `Done`, enquanto a
-  API retorna o status localizado `Concluído`. A data pode ser reproduzida com
-  `--as-of`; `OKR_BUGS_JQL` continua disponível para exceções.
+- **Escopo Jira:** Bugs são buscados no projeto `ZG`. Adaptativas ficam
+  restritas às squads Operadoras nos dois quadros: `ZGT - Novas Operadoras` no
+  projeto `ZGT` e `Operadoras` no projeto `ZG`. Ambas as consultas exigem status
+  concluído, criação desde 01/01/2026 até a data da execução e estimativa
+  informada. A JQL usa o alias `Done`, enquanto a API retorna o status localizado
+  `Concluído`. A data pode ser reproduzida com `--as-of`.
 - **Estimativa:** campo Jira `timeoriginalestimate`, validado contra
   `aggregatetimeoriginalestimate` e `timetracking.originalEstimateSeconds`.
 - **Tempo real:** soma das durações dos lançamentos Clockify iniciados no ano
@@ -71,8 +72,8 @@ cp .env.example .env
 Preencha as credenciais do Jira e do Clockify. Os campos Jira usados são
 `timeoriginalestimate` para a estimativa e `timespent` para o tempo lançado,
 ambos convertidos de segundos para horas. `JIRA_ESTIMATE_FIELD` continua
-disponível para uma exceção futura. A consulta JQL pode ser substituída por
-`OKR_BUGS_JQL` ou pelo argumento `--jql`.
+disponível para uma exceção futura. A consulta JQL de Bugs pode ser substituída
+pelo argumento `--jql`; a de Adaptativas, por `--adaptativa-jql`.
 
 ## Execução
 

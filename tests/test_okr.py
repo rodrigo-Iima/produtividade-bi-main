@@ -1,6 +1,7 @@
 import unittest
 from datetime import date
 
+from config.settings import build_okr_adaptativa_jql, build_okr_bugs_jql
 from okr.domain import (
     build_monthly_metrics,
     build_period_metrics,
@@ -14,6 +15,26 @@ from okr.pipeline import RawInputs, analyze_inputs, result_to_payload
 
 
 class OkrDomainTests(unittest.TestCase):
+    def test_builds_distinct_jql_scope_for_bugs_and_operadoras_adaptativas(self):
+        as_of_date = date(2026, 8, 5)
+
+        bugs_jql = build_okr_bugs_jql(as_of_date)
+        adaptativa_jql = build_okr_adaptativa_jql(as_of_date)
+
+        self.assertIn('project = ZG AND issuetype = "Bug"', bugs_jql)
+        self.assertNotIn('squad[dropdown]', bugs_jql)
+        self.assertIn(
+            '(project = ZGT AND "squad[dropdown]" = "ZGT - Novas Operadoras")',
+            adaptativa_jql,
+        )
+        self.assertIn(
+            '(project = ZG AND "squad[dropdown]" = Operadoras)',
+            adaptativa_jql,
+        )
+        self.assertIn('AND issuetype = "Adaptativa"', adaptativa_jql)
+        self.assertIn('AND status = Done', adaptativa_jql)
+        self.assertIn('AND created <= "2026-08-05"', adaptativa_jql)
+
     def test_extracts_issue_keys_from_description_and_task(self):
         sources = extract_issue_sources("Correção BUG-1 e BUG-2", "BUG-1")
 

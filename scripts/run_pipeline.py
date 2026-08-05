@@ -16,6 +16,7 @@ from config.settings import (
     JIRA_ESTIMATE_FIELD,
     OKR_TIMEZONE,
     OKR_YEAR,
+    build_okr_adaptativa_jql,
     build_okr_bugs_jql,
     execution_date,
 )
@@ -30,10 +31,11 @@ from okr.pipeline import (
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Relaciona Bugs Jira de 2026 com horas lançadas no Clockify."
+        description="Relaciona Bugs e Adaptativas Jira de 2026 com horas lançadas no Clockify."
     )
     parser.add_argument("--year", type=int, default=OKR_YEAR)
-    parser.add_argument("--jql", help="sobrescreve a JQL padrão")
+    parser.add_argument("--jql", help="sobrescreve a JQL padrão de Bugs")
+    parser.add_argument("--adaptativa-jql", help="sobrescreve a JQL padrão de Adaptativas")
     parser.add_argument("--output", type=Path)
     parser.add_argument(
         "--fetch-only",
@@ -49,10 +51,12 @@ def main() -> int:
 
     as_of_date = args.as_of or execution_date()
     effective_jql = args.jql or build_okr_bugs_jql(as_of_date)
+    effective_adaptativa_jql = args.adaptativa_jql or build_okr_adaptativa_jql(as_of_date)
 
     if args.fetch_only:
         inputs = fetch_inputs(
             jql=effective_jql,
+            adaptativa_jql=effective_adaptativa_jql,
             target_year=args.year,
             timezone_name=OKR_TIMEZONE,
             as_of_date=as_of_date,
@@ -61,6 +65,7 @@ def main() -> int:
     else:
         result = run_analysis(
             jql=effective_jql,
+            adaptativa_jql=effective_adaptativa_jql,
             target_year=args.year,
             timezone_name=OKR_TIMEZONE,
             estimate_field=JIRA_ESTIMATE_FIELD,
@@ -69,6 +74,7 @@ def main() -> int:
         payload = result_to_payload(
             result,
             jql=effective_jql,
+            adaptativa_jql=effective_adaptativa_jql,
             target_year=args.year,
             timezone_name=OKR_TIMEZONE,
             estimate_field=JIRA_ESTIMATE_FIELD,
