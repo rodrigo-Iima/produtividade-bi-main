@@ -46,6 +46,11 @@ class FlowIdentityETL:
         session = session_factory()
         try:
             contracts = client.get_active_employee_contracts()
+            if not contracts:
+                raise FlowIdentityError(
+                    "Flow retornou zero colaboradores ativos; "
+                    "carga de identidades não aplicada"
+                )
             result = FlowIdentityService().sync(
                 session,
                 contracts,

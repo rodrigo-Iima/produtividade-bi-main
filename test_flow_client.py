@@ -389,7 +389,12 @@ def test_rejects_non_success_http_without_exposing_response_body():
     )
 
     with pytest.raises(FlowAPIError) as error:
-        FlowClient(token="test-token", session=session).get_points("123")
+        FlowClient(
+            token="test-token",
+            username="",
+            password="",
+            session=session,
+        ).get_points("123")
 
     assert "HTTP 401" in str(error.value)
     assert "sensitive upstream response" not in str(error.value)
