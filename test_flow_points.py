@@ -404,6 +404,37 @@ def test_service_requests_only_active_mapped_people(database):
     assert session.query(FatoFlowMarcacao).count() == 2
 
 
+def test_service_can_request_all_active_people_when_unmapped_is_allowed(
+    database,
+):
+    session, factory = database
+    _add_person(session, "p-active", "u-active")
+    _add_person(
+        session,
+        "p-unmapped",
+        "u-unmapped",
+        mapped=False,
+    )
+    _add_person(
+        session,
+        "p-inactive",
+        "u-inactive",
+        active=False,
+    )
+    session.commit()
+    client = _FakeFlowClient()
+
+    result = FlowPointService(
+        client=client,
+        session_factory=factory,
+        include_unmapped=True,
+    ).run(COLLECTED_AT)
+
+    assert client.requested == ["p-active", "p-unmapped"]
+    assert result["people_requested"] == 2
+    assert result["people_received"] == 2
+
+
 class _FakeFlowClient:
     def __init__(self):
         self.requested = []

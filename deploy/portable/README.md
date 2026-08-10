@@ -91,9 +91,11 @@ EC2 eram executadas manualmente. O comando `run` usa
 Copie `runtime.env.example` para um arquivo fora do Git, preencha os segredos e
 informe seu caminho por `RUNTIME_ENV_FILE`.
 
-Para carregar as marcações de ponto, forneça `FLOW_API_TOKEN` nesse arquivo e
-defina `FLOW_ENABLED=true`. O token não deve ser incluído na imagem nem no
-Compose versionado.
+Para carregar as marcações de ponto, forneça `FLOW_LOGIN_USERNAME` e
+`FLOW_LOGIN_PASSWORD` nesse arquivo e defina `FLOW_ENABLED=true`. O ETL chama o
+endpoint Login e mantém o JWT somente em memória. `FLOW_API_TOKEN` permanece
+como fallback legado quando o Login não estiver configurado. Nenhuma dessas
+credenciais deve ser incluída na imagem nem no Compose versionado.
 
 ```bash
 ETL_IMAGE=registry.example/produtividade-etl:<tag> \

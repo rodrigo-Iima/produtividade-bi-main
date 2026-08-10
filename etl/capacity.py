@@ -20,6 +20,22 @@ from models.fato_sprint_capacidade import FatoSprintCapacidade
 LOCAL_ZONE = ZoneInfo("America/Sao_Paulo")
 WORKING_DAYS_PER_WEEK = Decimal("5")
 CAPACITY_SOURCE = "clockify_current_configuration"
+FLOW_NON_WORKING_KINDS = frozenset(
+    {
+        "compensado",
+        "compensated",
+        "férias",
+        "ferias",
+        "repouso remunerado",
+        "ocorrência",
+        "ocorrencia",
+    }
+)
+
+
+def is_non_working_flow_kind(kind: str | None) -> bool:
+    """Return whether a Flow day kind should reduce Sprint timebox capacity."""
+    return (kind or "").strip().casefold() in FLOW_NON_WORKING_KINDS
 
 
 def count_business_days(start_date: date, end_date: date) -> int:

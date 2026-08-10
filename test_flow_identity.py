@@ -377,6 +377,53 @@ def test_identity_etl_fetches_syncs_and_commits():
     engine.dispose()
 
 
+def test_identity_etl_rejects_empty_snapshot_without_mutating_rows():
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(
+        engine,
+        tables=[
+            DimSquad.__table__,
+            DimColaborador.__table__,
+            DimFlowPessoa.__table__,
+            DimFlowContrato.__table__,
+        ],
+    )
+    factory = sessionmaker(bind=engine)
+    with factory() as setup_session:
+        setup_session.add(
+            DimFlowPessoa(
+                flow_person_id="p1",
+                name="Pessoa existente",
+                mapping_status="unmapped_no_match",
+                is_active=True,
+                flow_last_seen_at=OBSERVED_AT,
+                updated_at=OBSERVED_AT,
+            )
+        )
+        setup_session.add(
+            DimFlowContrato(
+                flow_contract_id="c1",
+                flow_person_id="p1",
+                status=1,
+                is_active=True,
+                flow_last_seen_at=OBSERVED_AT,
+                updated_at=OBSERVED_AT,
+            )
+        )
+        setup_session.commit()
+
+    with pytest.raises(FlowIdentityError, match="zero colaboradores"):
+        FlowIdentityETL(
+            client=_FakeEmployeeClient([]),
+            session_factory=factory,
+        ).run(OBSERVED_AT)
+
+    with factory() as check_session:
+        assert check_session.get(DimFlowPessoa, "p1").is_active is True
+        assert check_session.get(DimFlowContrato, "c1").is_active is True
+    engine.dispose()
+
+
 class _FakeEmployeeClient:
     def __init__(self, contracts):
         self.contracts = contracts

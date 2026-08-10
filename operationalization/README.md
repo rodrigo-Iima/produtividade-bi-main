@@ -44,8 +44,17 @@ e configure o job regular com `ETL_AUTO_MIGRATE=false`.
 A carga de ponto permanece desativada até que o ambiente contenha:
 
 ```dotenv
-FLOW_API_TOKEN=<segredo>
+FLOW_LOGIN_URL=https://zgsolucoes.flow.gp/metadados.api/api/v1/Login
+FLOW_LOGIN_USERNAME=<segredo>
+FLOW_LOGIN_PASSWORD=<segredo>
+# Optional legacy fallback when Login credentials are not configured.
+FLOW_API_TOKEN=
+FLOW_TOKEN_REFRESH_SKEW_SECONDS=300
 FLOW_ENABLED=true
+# Temporarily disable identity sync when the Flow user cannot read
+# collaborators; use persisted IDs for point collection instead.
+FLOW_IDENTITY_SYNC_ENABLED=true
+FLOW_POINTS_INCLUDE_UNMAPPED=false
 HOURS_COMPETENCE_CLOSING_DAY=25
 HOURS_RECONCILIATION_LOOKBACK_DAYS=45
 HOURS_RECONCILIATION_TOLERANCE_MINUTES=15
@@ -53,8 +62,9 @@ FLOW_RECONCILIATION_IGNORED_PERSON_IDS=208
 CLOCKIFY_INCREMENTAL_LOOKBACK_DAYS=10
 ```
 
-O token deve ficar no `.env` não versionado ou no gerenciador de segredos do
-ambiente. Quando habilitada, a execução sincroniza primeiro os colaboradores
+As credenciais do Login devem ficar no `.env` não versionado ou no gerenciador
+de segredos do ambiente. O ETL autentica no início da chamada, extrai
+`registros[0].token` e mantém o JWT somente em memória. Quando habilitada, a execução sincroniza primeiro os colaboradores
 Flow com os usuários ativos do Clockify e consulta marcações apenas para os
 vínculos ativos e resolvidos.
 

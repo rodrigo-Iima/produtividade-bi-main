@@ -20,6 +20,14 @@ class DimSprint(Base):
 
     sprint_end: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Jira's planned end date is not always the date on which a Sprint is
+    # actually completed. Keep the completion timestamp separately so
+    # activity and attendance windows can include late-finished days without
+    # rewriting the planned schedule.
+    sprint_completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     sprint_state: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     # Jira Agile board that owns the sprint. A sprint may be shared by several
