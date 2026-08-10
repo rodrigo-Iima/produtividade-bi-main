@@ -13,15 +13,16 @@ def test_flow_steps_can_be_disabled(monkeypatch, capsys):
 def test_flow_steps_run_identity_before_points(monkeypatch):
     events = []
     monkeypatch.setattr(main, "FLOW_ENABLED", True)
+    monkeypatch.setattr(main, "FlowClient", _FakeFlowClient)
     monkeypatch.setattr(
         main,
         "FlowIdentityETL",
-        lambda: _FakeIdentityETL(events),
+        lambda client=None: _FakeIdentityETL(events),
     )
     monkeypatch.setattr(
         main,
         "FlowPointService",
-        lambda: _FakePointETL(events),
+        lambda client=None: _FakePointETL(events),
     )
     monkeypatch.setattr(
         main,
@@ -35,13 +36,14 @@ def test_flow_steps_run_identity_before_points(monkeypatch):
 
 def test_flow_steps_do_not_request_points_when_identity_fails(monkeypatch):
     monkeypatch.setattr(main, "FLOW_ENABLED", True)
+    monkeypatch.setattr(main, "FlowClient", _FakeFlowClient)
     monkeypatch.setattr(
         main,
         "FlowIdentityETL",
         _FailingIdentityETL,
     )
 
-    def unexpected_point_service():
+    def unexpected_point_service(client=None):
         raise AssertionError("Pontos não devem rodar sem identidades")
 
     monkeypatch.setattr(
@@ -72,6 +74,11 @@ class _FakeIdentityETL:
         }
 
 
+class _FakeFlowClient:
+    def close(self):
+        pass
+
+
 class _FakePointETL:
     def __init__(self, events):
         self.events = events
@@ -89,6 +96,9 @@ class _FakePointETL:
 
 
 class _FailingIdentityETL:
+    def __init__(self, client=None):
+        pass
+
     def run(self):
         raise RuntimeError("Flow indisponível")
 

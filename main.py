@@ -4,6 +4,7 @@ import sys
 from uuid import uuid4
 
 from config.settings import ETL_AUTO_MIGRATE, FLOW_ENABLED
+from clients.flow_client import FlowClient
 from database.connection import engine
 from database.etl_log import EtlRunLogger
 from database.schema import ensure_schema
@@ -141,10 +142,16 @@ def _run_flow_steps(logger: EtlRunLogger | None) -> list[str]:
         print("[SKIP] Integração Flow (FLOW_ENABLED=false)")
         return []
 
-    identity_etl = FlowIdentityETL()
+    flow_client: FlowClient | None = None
+
+    def get_flow_client() -> FlowClient:
+        nonlocal flow_client
+        if flow_client is None:
+            flow_client = FlowClient()
+        return flow_client
 
     def run_identity():
-        result = identity_etl.run()
+        result = FlowIdentityETL(client=get_flow_client()).run()
         return {
             **result,
             "extracted": result["contracts"],
@@ -152,46 +159,48 @@ def _run_flow_steps(logger: EtlRunLogger | None) -> list[str]:
             "loaded": result["people"] + result["contracts"],
         }
 
-    identity_step = "Sincronização de colaboradores Flow"
-    if not _run_step(identity_step, run_identity, logger):
-        return [identity_step]
+    try:
+        identity_step = "Sincronização de colaboradores Flow"
+        if not _run_step(identity_step, run_identity, logger):
+            return [identity_step]
 
-    point_etl = FlowPointService()
+        def run_points():
+            result = FlowPointService(client=get_flow_client()).run()
+            return {
+                **result,
+                "extracted": result["marks_loaded"],
+                "transformed": result["days_replaced"],
+                "loaded": (
+                    result["days_replaced"]
+                    + result["marks_loaded"]
+                    + result["intervals_loaded"]
+                ),
+            }
 
-    def run_points():
-        result = point_etl.run()
-        return {
-            **result,
-            "extracted": result["marks_loaded"],
-            "transformed": result["days_replaced"],
-            "loaded": (
-                result["days_replaced"]
-                + result["marks_loaded"]
-                + result["intervals_loaded"]
-            ),
-        }
+        point_step = "Extração e carga das marcações Flow"
+        if not _run_step(point_step, run_points, logger):
+            return [point_step]
 
-    point_step = "Extração e carga das marcações Flow"
-    if not _run_step(point_step, run_points, logger):
-        return [point_step]
+        def run_reconciliation():
+            result = HoursReconciliationService().run()
+            return {
+                **result,
+                "extracted": result["records_evaluated"],
+                "transformed": result["records_evaluated"],
+                "loaded": result["created"] + result["updated"],
+            }
 
-    def run_reconciliation():
-        result = HoursReconciliationService().run()
-        return {
-            **result,
-            "extracted": result["records_evaluated"],
-            "transformed": result["records_evaluated"],
-            "loaded": result["created"] + result["updated"],
-        }
-
-    reconciliation_step = "Conferência diária Flow × Clockify"
-    if not _run_step(
-        reconciliation_step,
-        run_reconciliation,
-        logger,
-    ):
-        return [reconciliation_step]
-    return []
+        reconciliation_step = "Conferência diária Flow × Clockify"
+        if not _run_step(
+            reconciliation_step,
+            run_reconciliation,
+            logger,
+        ):
+            return [reconciliation_step]
+        return []
+    finally:
+        if flow_client is not None:
+            flow_client.close()
 
 
 def _finish_run(failures: list[str], logger: EtlRunLogger | None) -> int:

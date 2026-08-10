@@ -2,6 +2,8 @@
 
 from dataclasses import asdict
 from datetime import date, time
+import base64
+import json
 
 import pytest
 
@@ -19,14 +21,20 @@ class FakeResponse:
 
 
 class FakeSession:
-    def __init__(self, responses):
+    def __init__(self, responses, post_responses=None):
         self.responses = list(responses)
+        self.post_responses = list(post_responses or [])
         self.calls = []
+        self.post_calls = []
         self.closed = False
 
     def get(self, url, **kwargs):
         self.calls.append((url, kwargs))
         return self.responses.pop(0)
+
+    def post(self, url, **kwargs):
+        self.post_calls.append((url, kwargs))
+        return self.post_responses.pop(0)
 
     def close(self):
         self.closed = True
@@ -73,6 +81,119 @@ def _employee_page(records, total, status="Sucesso", errors=None):
             "erros": errors or [],
         }
     }
+
+
+def _login_response(token="fresh-token", status="Sucesso", errors=None):
+    return FakeResponse(
+        {
+            "status_processamento": 1,
+            "status": status,
+            "total": 1,
+            "registros": [{"token": token}],
+            "erros": errors or [],
+        }
+    )
+
+
+def _jwt_with_exp(expiration):
+    payload = base64.urlsafe_b64encode(
+        json.dumps({"exp": expiration}).encode()
+    ).decode().rstrip("=")
+    return f"header.{payload}.signature"
+
+
+def test_logs_in_automatically_when_static_token_is_absent():
+    session = FakeSession(
+        [FakeResponse(_employee_page([_employee(10, 100)], total=1))],
+        post_responses=[_login_response()],
+    )
+    client = FlowClient(
+        token="",
+        username="flow-user",
+        password="flow-password",
+        login_url="https://flow.example/Metadados.Api/api/v1/Login",
+        session=session,
+    )
+
+    client.get_active_employee_contracts()
+
+    login_call = session.post_calls[0]
+    assert login_call[0].endswith("/api/v1/Login")
+    assert login_call[1]["json"] == {
+        "Username": "flow-user",
+        "Senha": "flow-password",
+    }
+    assert session.calls[0][1]["headers"]["Authorization"] == (
+        "Bearer fresh-token"
+    )
+
+
+def test_logs_in_before_request_when_jwt_is_expired():
+    session = FakeSession(
+        [FakeResponse(_employee_page([_employee(10, 100)], total=1))],
+        post_responses=[_login_response("renewed-token")],
+    )
+    client = FlowClient(
+        token=_jwt_with_exp(1),
+        username="flow-user",
+        password="flow-password",
+        session=session,
+    )
+
+    client.get_active_employee_contracts()
+
+    assert len(session.post_calls) == 1
+    assert session.calls[0][1]["headers"]["Authorization"] == (
+        "Bearer renewed-token"
+    )
+
+
+def test_reauthenticates_once_after_unauthorized_response():
+    session = FakeSession(
+        [
+            FakeResponse({}, status_code=401),
+            FakeResponse(_employee_page([_employee(10, 100)], total=1)),
+        ],
+        post_responses=[_login_response("renewed-token")],
+    )
+    client = FlowClient(
+        token="current-token",
+        username="flow-user",
+        password="flow-password",
+        session=session,
+    )
+
+    client.get_active_employee_contracts()
+
+    assert len(session.calls) == 2
+    assert len(session.post_calls) == 1
+    assert session.calls[1][1]["headers"]["Authorization"] == (
+        "Bearer renewed-token"
+    )
+
+
+def test_rejects_login_functional_error_without_exposing_response_details():
+    session = FakeSession(
+        [],
+        post_responses=[
+            _login_response(
+                token="",
+                status="Erro",
+                errors=[{"mensagem": "sensitive login detail"}],
+            )
+        ],
+    )
+
+    with pytest.raises(FlowAPIError) as error:
+        FlowClient(
+            token="",
+            username="flow-user",
+            password="flow-password",
+            session=session,
+        )
+
+    assert "falha funcional" in str(error.value)
+    assert "sensitive login detail" not in str(error.value)
 
 
 def test_fetches_active_employee_contracts_with_offset_pagination():
