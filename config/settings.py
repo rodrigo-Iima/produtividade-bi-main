@@ -84,6 +84,14 @@ FLOW_TOKEN_REFRESH_SKEW_SECONDS = _env_nonnegative_int(
     300,
 )
 FLOW_ENABLED = _env_bool("FLOW_ENABLED", False)
+FLOW_IDENTITY_SYNC_ENABLED = _env_bool(
+    "FLOW_IDENTITY_SYNC_ENABLED",
+    True,
+)
+FLOW_POINTS_INCLUDE_UNMAPPED = _env_bool(
+    "FLOW_POINTS_INCLUDE_UNMAPPED",
+    False,
+)
 
 # Daily point × Clockify reconciliation
 HOURS_COMPETENCE_CLOSING_DAY = _env_day_of_month(

@@ -10,6 +10,33 @@ def test_flow_steps_can_be_disabled(monkeypatch, capsys):
     assert "FLOW_ENABLED=false" in capsys.readouterr().out
 
 
+def test_flow_steps_can_collect_points_from_stored_ids(monkeypatch):
+    events = []
+    monkeypatch.setattr(main, "FLOW_ENABLED", True)
+    monkeypatch.setattr(main, "FLOW_IDENTITY_SYNC_ENABLED", False)
+    monkeypatch.setattr(main, "FLOW_POINTS_INCLUDE_UNMAPPED", True)
+    monkeypatch.setattr(main, "FlowClient", _FakeFlowClient)
+    monkeypatch.setattr(
+        main,
+        "FlowIdentityETL",
+        lambda client=None: _FailingIdentityETL(),
+    )
+
+    def point_service(client=None, include_unmapped=False):
+        assert include_unmapped is True
+        return _FakePointETL(events)
+
+    monkeypatch.setattr(main, "FlowPointService", point_service)
+    monkeypatch.setattr(
+        main,
+        "HoursReconciliationService",
+        lambda: _FakeReconciliationETL(events),
+    )
+
+    assert main._run_flow_steps(None) == []
+    assert events == ["points", "reconciliation"]
+
+
 def test_flow_steps_run_identity_before_points(monkeypatch):
     events = []
     monkeypatch.setattr(main, "FLOW_ENABLED", True)
@@ -22,7 +49,7 @@ def test_flow_steps_run_identity_before_points(monkeypatch):
     monkeypatch.setattr(
         main,
         "FlowPointService",
-        lambda client=None: _FakePointETL(events),
+        lambda client=None, include_unmapped=False: _FakePointETL(events),
     )
     monkeypatch.setattr(
         main,

@@ -29,6 +29,7 @@ class FlowPointLoadService:
         session: Session,
         point_snapshots: Iterable[FlowPoints],
         collected_at: datetime | None = None,
+        allow_unmapped: bool = False,
     ) -> dict[str, int]:
         collected_at = collected_at or datetime.now(timezone.utc)
         if collected_at.tzinfo is None:
@@ -38,6 +39,7 @@ class FlowPointLoadService:
         snapshots_by_person = self._validate_snapshots(
             session,
             snapshots,
+            allow_unmapped=allow_unmapped,
         )
         returned_days = self._collect_returned_days(snapshots_by_person)
 
@@ -126,6 +128,7 @@ class FlowPointLoadService:
         self,
         session: Session,
         snapshots: list[FlowPoints],
+        allow_unmapped: bool = False,
     ) -> dict[str, FlowPoints]:
         snapshots_by_person: dict[str, FlowPoints] = {}
         for snapshot in snapshots:
@@ -152,7 +155,9 @@ class FlowPointLoadService:
                 raise FlowPointLoadError(
                     f"Pessoa Flow inexistente: {person_id}"
                 )
-            if not person.is_active or person.mapping_status != "mapped":
+            if not person.is_active or (
+                not allow_unmapped and person.mapping_status != "mapped"
+            ):
                 raise FlowPointLoadError(
                     "Pessoa Flow não está ativa e mapeada: "
                     f"{person_id}"
@@ -243,9 +248,11 @@ class FlowPointService:
         self,
         client: FlowClient | None = None,
         session_factory: Callable[[], Session] | None = None,
+        include_unmapped: bool = False,
     ):
         self._client = client
         self._session_factory = session_factory
+        self._include_unmapped = include_unmapped
 
     def run(self, collected_at: datetime | None = None) -> dict[str, int]:
         client = self._client or FlowClient()
@@ -258,14 +265,16 @@ class FlowPointService:
 
         session = session_factory()
         try:
+            people_query = select(DimFlowPessoa.flow_person_id).where(
+                DimFlowPessoa.is_active.is_(True),
+            )
+            if not self._include_unmapped:
+                people_query = people_query.where(
+                    DimFlowPessoa.mapping_status == "mapped",
+                )
             person_ids = list(
                 session.scalars(
-                    select(DimFlowPessoa.flow_person_id)
-                    .where(
-                        DimFlowPessoa.is_active.is_(True),
-                        DimFlowPessoa.mapping_status == "mapped",
-                    )
-                    .order_by(DimFlowPessoa.flow_person_id)
+                    people_query.order_by(DimFlowPessoa.flow_person_id)
                 )
             )
             snapshots = [
@@ -276,6 +285,7 @@ class FlowPointService:
                 session,
                 snapshots,
                 collected_at=collected_at,
+                allow_unmapped=self._include_unmapped,
             )
             session.commit()
             return {

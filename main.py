@@ -3,7 +3,12 @@
 import sys
 from uuid import uuid4
 
-from config.settings import ETL_AUTO_MIGRATE, FLOW_ENABLED
+from config.settings import (
+    ETL_AUTO_MIGRATE,
+    FLOW_ENABLED,
+    FLOW_IDENTITY_SYNC_ENABLED,
+    FLOW_POINTS_INCLUDE_UNMAPPED,
+)
 from clients.flow_client import FlowClient
 from database.connection import engine
 from database.etl_log import EtlRunLogger
@@ -160,12 +165,21 @@ def _run_flow_steps(logger: EtlRunLogger | None) -> list[str]:
         }
 
     try:
-        identity_step = "Sincronização de colaboradores Flow"
-        if not _run_step(identity_step, run_identity, logger):
-            return [identity_step]
+        if FLOW_IDENTITY_SYNC_ENABLED:
+            identity_step = "Sincronização de colaboradores Flow"
+            if not _run_step(identity_step, run_identity, logger):
+                return [identity_step]
+        else:
+            print(
+                "[SKIP] Sincronização de colaboradores Flow "
+                "(FLOW_IDENTITY_SYNC_ENABLED=false)"
+            )
 
         def run_points():
-            result = FlowPointService(client=get_flow_client()).run()
+            result = FlowPointService(
+                client=get_flow_client(),
+                include_unmapped=FLOW_POINTS_INCLUDE_UNMAPPED,
+            ).run()
             return {
                 **result,
                 "extracted": result["marks_loaded"],
