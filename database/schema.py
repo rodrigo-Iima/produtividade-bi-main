@@ -23,6 +23,7 @@ from database.migrations.phase21 import ensure_phase21_schema
 from database.migrations.phase22 import ensure_phase22_schema
 from database.migrations.phase23 import ensure_phase23_schema
 from database.migrations.phase24 import ensure_phase24_schema
+from database.migrations.phase25 import ensure_phase25_schema
 
 
 def ensure_schema() -> None:
@@ -58,6 +59,9 @@ def _ensure_complete_schema() -> None:
     ensure_phase3_views(engine)
     ensure_phase4_schema(engine)
     ensure_dashboard_views(engine)
+    # The canonical entry contract must be rebuilt after the legacy dashboard
+    # SQL and before capacity/timebox views consume it.
+    ensure_phase25_schema(engine)
     ensure_phase15_schema(engine)
     ensure_phase21_schema(engine)
     ensure_phase22_schema(engine)

@@ -1,4 +1,9 @@
-"""Make Sprint capacity aware of non-working Flow days."""
+"""Build the dynamic Sprint capacity contract.
+
+Capacity is calculated from the current Sprint × Squad × Clockify capacity
+group dimensions. ``fato_sprint_capacidade`` remains only as a deprecated
+compatibility snapshot until the second cleanup round.
+"""
 
 from sqlalchemy import Engine, text
 
@@ -14,7 +19,66 @@ DROP VIEW IF EXISTS
 CASCADE;
 
 CREATE VIEW public.vw_dashboard_sprint_capacity_detail AS
-WITH sprint_windows AS (
+WITH capacity_source AS (
+    SELECT
+        s.sprint_id,
+        s.sprint_name,
+        s.sprint_start,
+        s.sprint_end,
+        s.sprint_completed_at,
+        s.sprint_state,
+        c.user_id,
+        c.name AS collaborator_name,
+        c.squad_id,
+        sq.nome AS squad_name,
+        c.papel,
+        g.group_id AS capacity_group_id,
+        g.name AS capacity_group_name,
+        g.capacity_hours_week,
+        planned.business_days,
+        (
+            g.capacity_hours_week / 5.0
+        ) * planned.business_days AS capacity_hours,
+        'clockify_current_configuration'::VARCHAR(50) AS source,
+        CURRENT_TIMESTAMP AS calculated_at
+    FROM public.dim_sprint AS s
+    JOIN public.bridge_sprint_squad AS b
+      ON b.sprint_id = s.sprint_id
+    JOIN public.dim_colaborador AS c
+      ON c.squad_id = b.squad_id
+     AND c.is_active IS TRUE
+    JOIN public.dim_squad AS sq
+      ON sq.squad_id = c.squad_id
+     AND sq.nome <> 'Transversal'
+    JOIN public.bridge_clockify_user_group AS ug
+      ON ug.user_id = c.user_id
+     AND ug.is_current IS TRUE
+    JOIN public.dim_clockify_group AS g
+      ON g.group_id = ug.group_id
+     AND g.is_active IS TRUE
+     AND g.group_type = 'capacity'
+    CROSS JOIN LATERAL (
+        SELECT COUNT(*) FILTER (
+            WHERE EXTRACT(ISODOW FROM day.work_date) BETWEEN 1 AND 5
+        )::INTEGER AS business_days
+        FROM generate_series(
+            (s.sprint_start AT TIME ZONE 'America/Sao_Paulo')::DATE,
+            (s.sprint_end AT TIME ZONE 'America/Sao_Paulo')::DATE - 1,
+            INTERVAL '1 day'
+        ) AS day(work_date)
+    ) AS planned
+    WHERE s.sprint_start > (
+              TIMESTAMP '2026-01-01 00:00:00'
+              AT TIME ZONE 'America/Sao_Paulo'
+          )
+      AND s.sprint_start <= CURRENT_TIMESTAMP
+      AND LOWER(s.sprint_state) IN ('active', 'closed')
+      AND s.sprint_start IS NOT NULL
+      AND s.sprint_end IS NOT NULL
+      AND s.sprint_end > s.sprint_start
+      AND g.capacity_hours_week IS NOT NULL
+      AND g.capacity_hours_week > 0
+), sprint_windows AS (
     SELECT
         s.sprint_id,
         s.sprint_start,
@@ -30,6 +94,8 @@ WITH sprint_windows AS (
             )::DATE
         END AS effective_end_date
     FROM public.dim_sprint AS s
+    JOIN (SELECT DISTINCT sprint_id FROM capacity_source) AS cs
+      ON cs.sprint_id = s.sprint_id
 ),
 capacity_day_summary AS (
     SELECT
@@ -54,7 +120,7 @@ capacity_day_summary AS (
                   'ocorrencia'
               )
         )::INTEGER AS flow_non_working_days
-    FROM public.fato_sprint_capacidade AS c
+    FROM capacity_source AS c
     JOIN sprint_windows AS w
       ON w.sprint_id = c.sprint_id
     CROSS JOIN LATERAL generate_series(
@@ -99,14 +165,14 @@ entry_by_user_sprint AS (
 capacity_detail AS (
     SELECT
         c.sprint_id,
-        s.sprint_name,
-        s.sprint_start,
-        s.sprint_end,
-        s.sprint_completed_at,
+        c.sprint_name,
+        c.sprint_start,
+        c.sprint_end,
+        c.sprint_completed_at,
         w.effective_end_date AS effective_sprint_end_date,
-        s.sprint_state,
+        c.sprint_state,
         c.user_id,
-        col.name AS collaborator_name,
+        c.collaborator_name,
         c.squad_id,
         c.squad_name,
         c.papel,
@@ -145,13 +211,9 @@ capacity_detail AS (
         c.capacity_hours AS snapshot_capacity_hours,
         c.source AS capacity_source,
         c.calculated_at
-    FROM public.fato_sprint_capacidade AS c
-    JOIN public.dim_sprint AS s
-      ON s.sprint_id = c.sprint_id
+    FROM capacity_source AS c
     JOIN sprint_windows AS w
       ON w.sprint_id = c.sprint_id
-    JOIN public.dim_colaborador AS col
-      ON col.user_id = c.user_id
     JOIN capacity_day_summary AS d
       ON d.sprint_id = c.sprint_id
      AND d.user_id = c.user_id
@@ -199,7 +261,7 @@ LEFT JOIN entry_by_user_sprint AS e
  AND e.user_id = c.user_id;
 
 COMMENT ON VIEW public.vw_dashboard_sprint_capacity_detail IS
-    'Grão: colaborador × Sprint. Capacidade usa a janela real de conclusão quando disponível; sprint_end continua sendo o fim planejado e o snapshot anterior fica disponível para auditoria.';
+    'Grão: colaborador × Sprint. A capacidade é dinâmica, derivada da configuração vigente de grupos do Clockify; a tabela fato_sprint_capacidade fica apenas como legado de compatibilidade nesta versão. A janela real de conclusão reduz o timebox quando disponível.';
 
 CREATE VIEW public.vw_dashboard_sprint_capacity AS
 SELECT
@@ -275,7 +337,7 @@ GROUP BY
     squad_name;
 
 COMMENT ON VIEW public.vw_dashboard_sprint_capacity IS
-    'Grão: Sprint × Squad. capacity_hours é a capacidade efetiva na janela real da Sprint; snapshot_capacity_hours preserva o cálculo materializado anteriormente.';
+    'Grão: Sprint × Squad. capacity_hours é a capacidade efetiva na janela real da Sprint e é recalculada a partir das dimensões atuais; os campos snapshot_* são aliases de compatibilidade até a remoção da fato legada.';
 
 CREATE VIEW public.vw_dashboard_sprint_efficiency AS
 SELECT

@@ -28,7 +28,7 @@ filtros em cada card.
 |---|---|---|
 | `vw_dashboard_valid_sprint` | sprint | Regra única de escopo de sprint |
 | `dim_papel_atividade_principal` | papel × tag | Atividade principal por papel |
-| `vw_dashboard_entry_base` | lançamento Clockify | Horas sem duplicação, filtros de pessoa e sprint canônica |
+| `vw_dashboard_entry_final` | lançamento Clockify | Horas sem duplicação; Sprint oficial atribuída pelo intervalo de datas |
 | `vw_dashboard_sprint_productivity` | sprint de período × colaborador | Fonte única dos KPIs de produtividade e qualidade dos lançamentos |
 | `vw_dashboard_entry_tag` | lançamento × tag | Distribuição por tag e foco |
 | `vw_dashboard_entry_sprint` | lançamento × sprint candidata | Atribuições e ambiguidades |
@@ -44,6 +44,11 @@ sprint_start > 01/01/2026
 sprint_start <= momento atual
 sprint_state IN (active, closed)
 ```
+
+`vw_dashboard_entry_base`, `vw_jira_ticket_sprint_detail` e as views antigas
+`vw_clockify_*` permanecem apenas para compatibilidade nesta versão e estão
+deprecated. Novos cards devem usar `vw_dashboard_entry_final` e
+`vw_dashboard_ticket_sprint`.
 
 Para os três cards operacionais, usar `vw_dashboard_sprint_timebox` com o
 filtro `sprint_state = 'active'`:

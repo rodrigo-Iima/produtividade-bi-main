@@ -149,8 +149,33 @@ def validate_loaded_data() -> dict[str, Any]:
             SELECT COUNT(*)
             FROM public.vw_dashboard_entry_final
             WHERE sprint_assignment_status NOT IN (
-                'atribuido', 'nao_aplicavel', 'historico_sem_sprint'
+                'atribuido', 'ambiguo', 'sem_sprint',
+                'nao_aplicavel', 'historico_sem_sprint'
             )
+        """,
+        "duplicate_current_capacity_assignments": """
+            SELECT COUNT(*)
+            FROM (
+                SELECT s.sprint_id, c.user_id
+                FROM public.dim_sprint AS s
+                JOIN public.bridge_sprint_squad AS b
+                  ON b.sprint_id = s.sprint_id
+                JOIN public.dim_colaborador AS c
+                  ON c.squad_id = b.squad_id
+                 AND c.is_active IS TRUE
+                JOIN public.bridge_clockify_user_group AS ug
+                  ON ug.user_id = c.user_id
+                 AND ug.is_current IS TRUE
+                JOIN public.dim_clockify_group AS g
+                  ON g.group_id = ug.group_id
+                 AND g.is_active IS TRUE
+                 AND g.group_type = 'capacity'
+                WHERE s.sprint_start > TIMESTAMPTZ '2026-01-01 00:00:00+00'
+                  AND s.sprint_start <= CURRENT_TIMESTAMP
+                  AND LOWER(s.sprint_state) IN ('active', 'closed')
+                GROUP BY s.sprint_id, c.user_id
+                HAVING COUNT(*) > 1
+            ) duplicates
         """,
     }
 

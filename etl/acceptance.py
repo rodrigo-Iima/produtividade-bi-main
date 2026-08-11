@@ -13,10 +13,11 @@ from sqlalchemy import text
 from config.settings import FLOW_ENABLED
 from database.connection import SessionLocal
 from etl.quality import DataQualityError, validate_loaded_data
-from queries import hours_by_sprint, ticket_metrics, total_hours
+from queries import ticket_metrics, total_hours
 
 
 ACCEPTANCE_VERSION = 1
+ANALYTICAL_CONTRACT_VERSION = 25
 OUTPUT_DIR = Path(".runtime/validation")
 
 
@@ -38,10 +39,10 @@ def run_acceptance() -> dict[str, Any]:
     _add_check(
         checks,
         "view_version",
-        "Camada de views da fase 3 aplicada",
+        "Contrato analítico unificado aplicado",
         profile["view_version"],
-        ">= 3",
-        profile["view_version"] >= 3,
+        f">= {ANALYTICAL_CONTRACT_VERSION}",
+        profile["view_version"] >= ANALYTICAL_CONTRACT_VERSION,
         "high",
     )
 
@@ -75,41 +76,21 @@ def run_acceptance() -> dict[str, Any]:
 
     _add_check(
         checks,
-        "clockify_entry_view_grain",
-        "View de lançamento mantém uma linha por entrada",
-        profile["view_counts"]["vw_clockify_entry_detail"],
+        "dashboard_entry_final_grain",
+        "View oficial de lançamentos mantém uma linha por entrada",
+        profile["view_counts"]["vw_dashboard_entry_final"],
         profile["row_counts"]["fato_clockify_entry"],
-        profile["view_counts"]["vw_clockify_entry_detail"]
+        profile["view_counts"]["vw_dashboard_entry_final"]
         == profile["row_counts"]["fato_clockify_entry"],
         "critical",
     )
     _add_check(
         checks,
-        "clockify_tag_view_grain",
-        "View de tags mantém uma linha por entrada × tag",
-        profile["view_counts"]["vw_clockify_entry_tag_detail"],
-        profile["row_counts"]["bridge_clockify_entry_tag"],
-        profile["view_counts"]["vw_clockify_entry_tag_detail"]
-        == profile["row_counts"]["bridge_clockify_entry_tag"],
-        "critical",
-    )
-    _add_check(
-        checks,
-        "clockify_sprint_view_grain",
-        "View de sprint mantém uma linha por entrada × atribuição",
-        profile["view_counts"]["vw_clockify_entry_sprint_detail"],
-        profile["row_counts"]["bridge_clockify_entry_sprint"],
-        profile["view_counts"]["vw_clockify_entry_sprint_detail"]
-        == profile["row_counts"]["bridge_clockify_entry_sprint"],
-        "critical",
-    )
-    _add_check(
-        checks,
-        "jira_view_grain",
-        "View Jira mantém uma linha por ticket × sprint",
-        profile["view_counts"]["vw_jira_ticket_sprint_detail"],
+        "dashboard_ticket_view_grain",
+        "View oficial Jira mantém uma linha por ticket × sprint",
+        profile["view_counts"]["vw_dashboard_ticket_sprint"],
         profile["row_counts"]["fato_jira_ticket_sprint"],
-        profile["view_counts"]["vw_jira_ticket_sprint_detail"]
+        profile["view_counts"]["vw_dashboard_ticket_sprint"]
         == profile["row_counts"]["fato_jira_ticket_sprint"],
         "critical",
     )
@@ -189,6 +170,26 @@ def run_acceptance() -> dict[str, Any]:
         True,
         "medium",
         warning=profile["entries_without_tags"] > 0,
+    )
+    _add_check(
+        checks,
+        "dashboard_ambiguous_assignments",
+        "Atribuições ambíguas ficam visíveis para revisão, sem bloquear o ETL",
+        profile["dashboard_ambiguous_assignments"],
+        "informativo",
+        True,
+        "medium",
+        warning=profile["dashboard_ambiguous_assignments"] > 0,
+    )
+    _add_check(
+        checks,
+        "dashboard_entries_without_sprint_assignment",
+        "Lançamentos fora de uma janela de Sprint ficam visíveis para revisão",
+        profile["dashboard_entries_without_sprint_assignment"],
+        "informativo",
+        True,
+        "medium",
+        warning=profile["dashboard_entries_without_sprint_assignment"] > 0,
     )
 
     if FLOW_ENABLED:
@@ -270,10 +271,8 @@ def _profile() -> dict[str, Any]:
         "jira_sprint_changelog",
     )
     views = (
-        "vw_clockify_entry_detail",
-        "vw_clockify_entry_tag_detail",
-        "vw_clockify_entry_sprint_detail",
-        "vw_jira_ticket_sprint_detail",
+        "vw_dashboard_entry_final",
+        "vw_dashboard_ticket_sprint",
     )
     session = SessionLocal()
     try:
@@ -288,9 +287,9 @@ def _profile() -> dict[str, Any]:
         schema_version = int(
             session.execute(text("SELECT COALESCE(MAX(version), 0) FROM etl_schema_version")).scalar_one()
         )
-        view_version = int(
-            session.execute(text("SELECT COALESCE(MAX(version), 0) FROM etl_view_version")).scalar_one()
-        )
+        # etl_schema_version is the single version authority. The legacy
+        # etl_view_version table remains only for compatibility in this release.
+        view_version = schema_version
         result = {
             "schema_version": schema_version,
             "view_version": view_version,
@@ -334,6 +333,18 @@ def _profile() -> dict[str, Any]:
                 SELECT COUNT(*) FROM fato_clockify_entry e
                 LEFT JOIN bridge_clockify_entry_sprint b ON b.entry_id = e.entry_id
                 WHERE b.entry_id IS NULL
+                """
+            )).scalar_one()),
+            "dashboard_ambiguous_assignments": int(session.execute(text(
+                """
+                SELECT COUNT(*) FROM vw_dashboard_entry_final
+                WHERE sprint_assignment_status = 'ambiguo'
+                """
+            )).scalar_one()),
+            "dashboard_entries_without_sprint_assignment": int(session.execute(text(
+                """
+                SELECT COUNT(*) FROM vw_dashboard_entry_final
+                WHERE sprint_assignment_status IN ('sem_sprint', 'historico_sem_sprint')
                 """
             )).scalar_one()),
             "ambiguous_sprint_links": int(session.execute(text(
@@ -385,27 +396,26 @@ def _metric_reconciliation(profile: dict[str, Any]) -> dict[str, float]:
         )).scalar_one())
         squad_total = _float(session.execute(text(
             """
-            SELECT COALESCE(SUM(duration_hours), 0)
-            FROM vw_clockify_entry_detail
+            SELECT COALESCE(SUM(duration_seconds), 0) / 3600.0
+            FROM fato_clockify_entry
             """
         )).scalar_one())
         assigned_sprint = _float(session.execute(text(
             """
-            SELECT COALESCE(SUM(e.duration_seconds), 0) / 3600.0
-            FROM fato_clockify_entry e
-            JOIN bridge_clockify_entry_sprint b ON b.entry_id = e.entry_id
-            WHERE b.assignment_status = 'atribuido'
+            SELECT COALESCE(SUM(duration_hours), 0)
+            FROM vw_dashboard_entry_final
+            WHERE sprint_id IS NOT NULL
+              AND sprint_assignment_status = 'atribuido'
             """
         )).scalar_one())
     finally:
         session.close()
 
-    sprint_total = sum(row["hours"] for row in hours_by_sprint())
     return {
         "fact_total_hours": fact_total,
         "metric_total_hours": total_hours(),
         "squad_total_hours": squad_total,
-        "assigned_sprint_hours": sprint_total,
+        "assigned_sprint_hours": assigned_sprint,
     }
 
 

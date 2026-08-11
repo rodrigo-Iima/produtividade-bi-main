@@ -9,7 +9,7 @@ diretamente ao PostgreSQL.
 
 | View | Grão | Uso e regra de agregação |
 |---|---|---|
-| `vw_dashboard_entry_base` | lançamento Clockify | Fonte do total de horas; somar `duration_hours` sem joins que multipliquem lançamentos |
+| `vw_dashboard_entry_final` | lançamento Clockify | Fonte oficial; Sprint atribuída exclusivamente pelo intervalo de datas da Squad |
 | `vw_dashboard_sprint_productivity` | sprint de período × colaborador | KPIs de produtividade; filtrar sprint antes de agregar |
 | `vw_dashboard_entry_tag` | lançamento × tag | Distribuição por tag; horas podem superar o total geral quando há múltiplas tags |
 | `vw_dashboard_entry_sprint` | lançamento × sprint candidata | Diagnóstico de atribuições e ambiguidades |
@@ -26,6 +26,11 @@ diretamente ao PostgreSQL.
 | `vw_conferencia_horas_dia` | colaborador × dia | Comparação incremental entre horas do ponto e lançamentos Clockify |
 | `vw_conferencia_horas_semana` | colaborador × semana | Resumo complementar da conferência diária e de suas pendências |
 | `vw_fila_revisao_horas` | colaborador × dia acionável | Revisão exclusiva de dias vencidos em que o Clockify supera o ponto |
+
+`vw_dashboard_entry_base` permanece somente como view de compatibilidade e está
+deprecated. Ela não deve ser usada por cards, consultas ou novas views. A view
+`vw_jira_ticket_sprint_detail` e as views antigas `vw_clockify_*` também estão
+deprecated; o contrato oficial de tickets é `vw_dashboard_ticket_sprint`.
 
 ## Filtros
 
@@ -76,7 +81,9 @@ diretamente ao PostgreSQL.
 17. Clockify menor que o ponto, ponto ausente/incompleto e ponto sem Clockify
     não entram na fila de revisão cuidadosa. Continuam no histórico e nas views
     do painel; dias sem Clockify servem para lembrar o colaborador de lançar.
-18. A capacidade efetiva da Sprint usa a janela real de conclusão quando
+18. A capacidade efetiva da Sprint é dinâmica e deriva da configuração vigente
+    de grupo de capacidade do Clockify, sem depender da carga de
+    `fato_sprint_capacidade`. Usa a janela real de conclusão quando
     `sprint_completed_at` estiver preenchido; para uma Sprint fechada, o dia
     local da conclusão é incluído. Se a conclusão ainda não estiver disponível,
     a janela planejada (`sprint_end`) permanece como fallback. A view preserva
@@ -86,7 +93,9 @@ diretamente ao PostgreSQL.
     `Repouso Remunerado` ou `Ocorrência`, limitados à capacidade disponível.
     Também preserva `calendar_capacity_hours`, `flow_non_working_days`,
     `flow_non_working_days_applied` e `flow_non_working_hours`;
-    `effective_sprint_end_date` expõe o limite exclusivo usado pelas views.
+    `effective_sprint_end_date` expõe o limite exclusivo usado pelas views. A
+    tabela `fato_sprint_capacidade` fica legada apenas durante a validação da
+    fase 25 e será removida na segunda rodada de limpeza.
 19. Os três cards operacionais usam `vw_dashboard_sprint_timebox`: `timebox_hours`
     é a capacidade produtiva efetiva, `hours_worked` é a soma das marcações
     Flow na janela efetiva, e `hours_logged` é a soma dos lançamentos Clockify

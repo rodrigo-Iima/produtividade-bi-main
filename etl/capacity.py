@@ -1,4 +1,10 @@
-"""Build theoretical Sprint capacity from the current Clockify configuration."""
+"""Legacy materializer for Sprint capacity.
+
+Runtime dashboard capacity is now calculated dynamically by
+``vw_dashboard_sprint_capacity_detail``. This service remains available only
+for compatibility/backfill until ``fato_sprint_capacidade`` is removed in the
+second cleanup round.
+"""
 
 from datetime import date, datetime, time, timezone
 from decimal import Decimal

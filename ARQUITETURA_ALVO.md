@@ -19,8 +19,9 @@ O schema v2 está aplicado no PostgreSQL. O grão persistido é:
 - `bridge_clockify_entry_sprint`: uma linha por lançamento e sprint atribuída;
 - `dim_colaborador`: uma linha por colaborador;
 - `dim_squad_alias`: uma linha por nome bruto de squad e origem;
-- `dim_tag`, `dim_papel_tag`, `dim_status`, `dim_sprint` e `dim_calendario`:
-  dimensões de referência.
+- `dim_tag`, `dim_papel_tag`, `dim_status` e `dim_sprint`: dimensões de
+  referência. `dim_calendario` permanece somente como legado e está marcado
+  deprecated até a segunda rodada de limpeza.
 
 ## Regras de totalização
 
@@ -32,8 +33,9 @@ O schema v2 está aplicado no PostgreSQL. O grão persistido é:
    devem ser misturados numa única coluna.
 4. Lançamentos sem ticket, sem sprint ou com mais de uma atribuição possível
    permanecem armazenados com um status de atribuição; não são descartados.
-5. A atribuição de sprint será derivada pelo relacionamento do ticket com a
-   sprint e pelo intervalo temporal do lançamento.
+5. A view oficial `vw_dashboard_entry_final` atribui a Sprint pelo intervalo
+   temporal do lançamento dentro da Squad; a relação ticket × sprint é
+   preservada apenas como atributo de auditoria.
 
 ## Camadas do código
 
