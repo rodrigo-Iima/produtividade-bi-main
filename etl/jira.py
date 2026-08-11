@@ -29,6 +29,7 @@ class JiraService:
         "status",
         "issuetype",
         "project",
+        "timetracking",
         "created",
         "updated",
         "resolutiondate",
@@ -196,6 +197,58 @@ class JiraService:
         finally:
             session.close()
 
+    def backfill_original_estimates(
+        self,
+        projects: list[str] | None = None,
+    ) -> dict[str, int]:
+        """Backfill Jira's original estimates for tickets already loaded.
+
+        The regular ETL is incremental by ``updated_at``. Because adding an
+        estimate column should also populate historical tickets that have not
+        changed recently, this explicit operation performs one full, auditable
+        extraction and updates only the estimate field. It is safe to rerun.
+        """
+        if projects is None:
+            projects = ["ZGT", "ZG", "ZGTN", "SRE"]
+
+        project_clause = " OR ".join(f"project = {project}" for project in projects)
+        jql = f"({project_clause}) AND created >= \"2026-01-01\""
+        raw_issues = self.client.search(
+            jql=jql,
+            fields=["key", "timetracking"],
+        )
+
+        session = SessionLocal()
+        counts = {"extracted": len(raw_issues), "matched": 0, "updated": 0}
+        try:
+            for issue in raw_issues:
+                issue_key = issue.get("key")
+                if not issue_key:
+                    continue
+                ticket = session.get(DimTicketJira, issue_key)
+                if ticket is None:
+                    continue
+                counts["matched"] += 1
+                estimate_seconds = self._parse_original_estimate_seconds(
+                    issue.get("fields") or {}
+                )
+                if ticket.original_estimate_seconds != estimate_seconds:
+                    ticket.original_estimate_seconds = estimate_seconds
+                    counts["updated"] += 1
+
+            session.commit()
+            print(
+                "[JiraETL] Original estimate backfill: "
+                f"{counts['matched']} tickets matched, "
+                f"{counts['updated']} updated"
+            )
+            return counts
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
     def _build_jql(self, projects: list[str], incremental: bool) -> str:
         project_clause = " OR ".join(f"project = {project}" for project in projects)
         parts = [f"({project_clause})", 'created >= "2026-01-01"']
@@ -237,6 +290,7 @@ class JiraService:
             project_name=fields["project"]["name"],
             issue_type_id=issue_type_id,
             issue_type_name=issue_type_name,
+            original_estimate_seconds=self._parse_original_estimate_seconds(fields),
             squad_jira=squad_jira,
             atravessamento_flag=self._parse_crossing_flag(
                 fields.get(JIRA_CROSSING_FIELD)
@@ -444,6 +498,49 @@ class JiraService:
         if normalized in {"não", "nao"}:
             return False
         return None
+
+    @staticmethod
+    def _parse_original_estimate_seconds(fields: dict) -> Optional[int]:
+        """Normalize Jira's original estimate to integer seconds.
+
+        Jira Cloud normally returns ``timetracking.originalEstimateSeconds``
+        in a search response. The direct field spelling and the human-readable
+        ``originalEstimate`` spelling are accepted as fallbacks so fixtures or
+        alternate Jira deployments remain compatible.
+        """
+        if not isinstance(fields, dict):
+            return None
+
+        tracking = fields.get("timetracking")
+        value = fields.get("timeoriginalestimate")
+        if value is None:
+            value = fields.get("originalEstimate")
+        if value is None and isinstance(tracking, dict):
+            value = tracking.get("originalEstimateSeconds")
+            if value is None:
+                value = tracking.get("original_estimate_seconds")
+            if value is None:
+                value = tracking.get("timeoriginalestimate")
+
+        # Some integrations wrap the numeric source value in an object.
+        if isinstance(value, dict):
+            for key in ("seconds", "originalEstimateSeconds", "value"):
+                candidate = value.get(key)
+                if candidate is not None:
+                    value = candidate
+                    break
+            else:
+                value = None
+
+        if value is None or value == "":
+            return None
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            # ``originalEstimate`` may be a formatted string such as "2h".
+            # Do not guess units; the seconds field is the canonical source.
+            return None
+        return parsed if parsed >= 0 else None
 
     @staticmethod
     def _parse_int(value) -> Optional[int]:

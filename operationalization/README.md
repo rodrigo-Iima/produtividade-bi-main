@@ -28,7 +28,14 @@ Na raiz do projeto:
 
 # Reexecuta apenas a validação sobre dados já carregados
 ./.venv/bin/python -m operationalization acceptance
+
+# Backfill controlado do originalEstimate para tickets já carregados
+./.venv/bin/python -m operationalization backfill-estimates
 ```
+
+O backfill consulta o `timetracking.originalEstimateSeconds` do Jira e atualiza
+somente a coluna de estimativa dos tickets existentes. A operação é idempotente;
+o ETL incremental passa a manter o valor atualizado nas execuções seguintes.
 
 O runner usa `.runtime/etl.lock` para impedir duas execuções simultâneas no
 mesmo host. Os resultados continuam registrados em `etl_run_log`, e o aceite

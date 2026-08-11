@@ -28,6 +28,8 @@ ALTER TABLE public.dim_ticket_jira
 ALTER TABLE public.dim_ticket_jira
     ADD COLUMN IF NOT EXISTS issue_type_id VARCHAR(30),
     ADD COLUMN IF NOT EXISTS issue_type_name VARCHAR(100);
+ALTER TABLE public.dim_ticket_jira
+    ADD COLUMN IF NOT EXISTS original_estimate_seconds BIGINT;
 ALTER TABLE public.fato_jira_ticket_sprint
     ADD COLUMN IF NOT EXISTS planejamento_status VARCHAR(30),
     ADD COLUMN IF NOT EXISTS planejamento_source VARCHAR(50);
@@ -504,6 +506,9 @@ SELECT
     t.status_original,
     COALESCE(st.status_agrupado, 'Não Classificado') AS status_agrupado,
     t.atravessamento_flag,
+    t.original_estimate_seconds,
+    t.original_estimate_seconds::numeric / 3600.0
+        AS original_estimate_hours,
     t.created_at,
     t.resolved_at,
     t.updated_at,
@@ -539,7 +544,7 @@ LEFT JOIN public.dim_squad AS sq
   ON sq.squad_id = alias_jira.squad_id;
 
 COMMENT ON VIEW public.vw_dashboard_ticket_sprint IS
-    'Grão: uma linha por ticket x sprint válida. TMR e contagens devem usar este grão ou uma deduplicação equivalente.';
+    'Grão: uma linha por ticket x sprint válida. original_estimate_seconds preserva o Jira e original_estimate_hours é a conversão para análise; TMR e contagens devem usar este grão ou uma deduplicação equivalente.';
 
 CREATE VIEW public.vw_dashboard_ticket_filter_bridge AS
 SELECT DISTINCT
@@ -583,6 +588,8 @@ SELECT
     ts.status_original,
     ts.status_agrupado,
     ts.atravessamento_flag,
+    ts.original_estimate_seconds,
+    ts.original_estimate_hours,
     ts.created_at,
     ts.resolved_at,
     ts.updated_at,
@@ -639,7 +646,8 @@ WITH ticket_kpis AS (
         COUNT(DISTINCT issue_key) FILTER (
             WHERE status_agrupado = 'Concluído'
               AND resolution_time_days IS NOT NULL
-        ) AS tmr_tickets_validos
+        ) AS tmr_tickets_validos,
+        COALESCE(SUM(original_estimate_hours), 0.0) AS horas_estimadas
     FROM public.vw_dashboard_ticket_sprint
     WHERE planejamento_status IN ('planejado', 'atravessado')
     GROUP BY sprint_id
@@ -703,6 +711,7 @@ SELECT
     tk.tmr_medio_dias,
     tk.tmr_mediano_dias,
     tk.tmr_tickets_validos,
+    COALESCE(tk.horas_estimadas, 0.0) AS horas_estimadas,
     COALESCE(ac.horas_total, 0.0) AS horas_total,
     COALESCE(ac.horas_foco, 0.0) AS horas_foco,
     COALESCE(ac.horas_foco_elegiveis, 0.0) AS horas_foco_elegiveis,
@@ -728,7 +737,7 @@ LEFT JOIN ambiguous_clockify AS amb
   ON amb.sprint_id = s.sprint_id;
 
 COMMENT ON VIEW public.vw_dashboard_sprint_kpis IS
-    'Resumo não filtrado por pessoa. Para cards com Colaborador/Papel/Squad, usar as views filterable e agregações distintas.';
+    'Resumo não filtrado por pessoa. horas_estimadas soma o originalEstimate dos tickets planejados/atravessados da Sprint; para cards com Colaborador/Papel/Squad, usar as views filterable e agregações distintas.';
 
 -- Índices de suporte às leituras analíticas.
 CREATE INDEX IF NOT EXISTS ix_fato_clockify_entry_entry_date

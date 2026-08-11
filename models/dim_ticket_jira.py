@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import BigInteger, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base
@@ -22,6 +22,13 @@ class DimTicketJira(Base):
     )
     issue_type_name: Mapped[Optional[str]] = mapped_column(
         String(100), nullable=True, index=True
+    )
+    # Jira REST exposes this value in seconds (usually as
+    # ``fields.timetracking.originalEstimateSeconds``). Keep the source unit
+    # in the dimension so analytical views can derive hours without losing
+    # precision or conflating an unset estimate with zero.
+    original_estimate_seconds: Mapped[Optional[int]] = mapped_column(
+        BigInteger, nullable=True
     )
     squad_jira: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, index=True)
     atravessamento_flag: Mapped[Optional[bool]] = mapped_column(

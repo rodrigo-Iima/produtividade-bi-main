@@ -67,6 +67,9 @@ VIEWS: dict[str, str] = {
             COALESCE(st.status_agrupado, 'Não Classificado') AS status_agrupado,
             t.project_key, t.project_name, t.squad_jira,
             t.atravessamento_flag,
+            t.original_estimate_seconds,
+            t.original_estimate_seconds::NUMERIC / 3600.0
+                AS original_estimate_hours,
             t.created_at, t.resolved_at, t.updated_at,
             r.sprint_entrada_at, r.planejado_no_inicio,
             r.planejamento_status, r.planejamento_source

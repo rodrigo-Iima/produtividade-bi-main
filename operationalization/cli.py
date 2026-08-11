@@ -34,6 +34,15 @@ def main() -> int:
         print(f"status={report['status']}")
         return 0 if report["status"] != "not_accepted" else 1
 
+    if args.command == "backfill-estimates":
+        from etl.jira import JiraService
+
+        result = JiraService().backfill_original_estimates(
+            projects=args.projects or None,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
     if args.command == "status":
         from .status import get_status
 
@@ -74,6 +83,16 @@ def _build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser(
         "acceptance", help="executa somente o aceite sobre o banco carregado"
+    )
+
+    backfill_parser = subparsers.add_parser(
+        "backfill-estimates",
+        help="carrega o originalEstimate dos tickets Jira já persistidos",
+    )
+    backfill_parser.add_argument(
+        "--projects",
+        nargs="+",
+        help="projetos Jira; por padrão usa ZGT ZG ZGTN SRE",
     )
 
     status_parser = subparsers.add_parser(

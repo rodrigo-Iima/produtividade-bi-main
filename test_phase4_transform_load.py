@@ -132,6 +132,47 @@ def test_jira_transform_persists_crossing_flag_on_ticket():
     assert result["ticket"].issue_type_name == "Melhoria"
 
 
+def test_jira_transform_persists_original_estimate_seconds():
+    issue = {
+        "key": "ZG-102",
+        "fields": {
+            "summary": "Ticket estimado",
+            "status": {"name": "Em andamento"},
+            "project": {"key": "ZG", "name": "Projeto ZG"},
+            "issuetype": {"id": "10056", "name": "Melhoria"},
+            "created": "2026-04-01T10:00:00Z",
+            "updated": "2026-04-02T10:00:00Z",
+            "resolutiondate": None,
+            "timetracking": {
+                "originalEstimate": "2h",
+                "originalEstimateSeconds": 7200,
+            },
+            JIRA_SQUAD_FIELD: {"value": "Squad de teste"},
+            JIRA_SPRINT_FIELD: [],
+            JIRA_CROSSING_FIELD: None,
+        },
+    }
+
+    result = JiraService()._transform_issue(issue)
+    assert result["ticket"].original_estimate_seconds == 7200
+
+
+def test_jira_original_estimate_parser_keeps_unset_and_rejects_formatted_only():
+    assert JiraService._parse_original_estimate_seconds({
+        "timetracking": {"originalEstimateSeconds": 5400}
+    }) == 5400
+    assert JiraService._parse_original_estimate_seconds({
+        "timeoriginalestimate": 3600
+    }) == 3600
+    assert JiraService._parse_original_estimate_seconds({
+        "timetracking": {"originalEstimateSeconds": 0}
+    }) == 0
+    assert JiraService._parse_original_estimate_seconds({
+        "timetracking": {"originalEstimate": "2h"}
+    }) is None
+    assert JiraService._parse_original_estimate_seconds({}) is None
+
+
 def test_jira_transform_persists_real_sprint_completion_timestamp():
     issue = {
         "key": "ZG-101",
@@ -172,6 +213,8 @@ if __name__ == "__main__":
         test_clockify_issue_key_source_is_classified_per_issue,
         test_jira_crossing_option_is_normalized_to_nullable_boolean,
         test_jira_transform_persists_crossing_flag_on_ticket,
+        test_jira_transform_persists_original_estimate_seconds,
+        test_jira_original_estimate_parser_keeps_unset_and_rejects_formatted_only,
         test_jira_transform_persists_real_sprint_completion_timestamp,
     ]
     for test in tests:
