@@ -86,7 +86,12 @@ os vínculos ativos e resolvidos.
 A janela incremental do Clockify relê alterações recentes. Depois da carga do
 Flow, a conferência diária é recalculada e mantém um histórico somente quando
 horas ou situação mudam. Pendências ainda dentro do prazo são informativas;
-pendências vencidas aparecem como avisos no aceite pós-carga.
+pendências vencidas permanecem quantificadas no aceite pós-carga.
+
+Por decisão funcional registrada em 2026-08-13, dias classificados como
+`clockify_maior_vencido` são informativos: alguns colaboradores registram
+legitimamente horas adicionais no Clockify. A contagem continua publicada no
+relatório de aceite, mas não bloqueia nem gera aviso para a migração.
 
 Na conferência, lançamentos concluídos do Clockify são rateados na meia-noite
 de `America/Sao_Paulo`, sem alterar o lançamento bruto. Diferenças de até 15

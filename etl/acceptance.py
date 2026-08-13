@@ -263,10 +263,9 @@ def run_acceptance() -> dict[str, Any]:
                 f"flow_{status}",
                 f"Conferência de horas: {status}",
                 count,
-                "0",
-                count == 0,
+                "informativo; horas adicionais no Clockify aceitas",
+                True,
                 "medium",
-                warning=count > 0,
             )
 
     ticket = ticket_metrics()
