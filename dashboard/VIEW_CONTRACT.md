@@ -20,6 +20,10 @@ diretamente ao PostgreSQL.
 | `vw_dashboard_sprint_capacity` | sprint × squad | Capacidade efetiva e horas por equipe na sprint |
 | `vw_dashboard_sprint_efficiency` | sprint × squad × papel × grupo de capacidade | Eficiência detalhada por composição da equipe, usando capacidade efetiva |
 | `vw_dashboard_sprint_timebox` | sprint × squad | Fonte única dos cards de timebox, horas trabalhadas Flow e horas lançadas Clockify |
+| `vw_dashboard_entry_tag_metrics` | lançamento × tag | Horas por tag rateadas para reconciliação aditiva |
+| `vw_dashboard_ticket_actual_hours` | ticket × sprint × colaborador | Horas reais associadas aos tickets, sem duplicação entre múltiplas chaves |
+| `vw_dashboard_sprint_timebox_detail` | sprint × colaborador | Capacidade, ponto e conformidade no grão individual |
+| `vw_dashboard_data_freshness` | fonte | Último sucesso, falha e registro de Jira, Clockify e Flow |
 | `vw_dashboard_filter_sprint_squad` | sprint × squad | Opções válidas do filtro combinado |
 | `vw_flow_ponto_dia` | colaborador Flow × dia | Marcações, pares sequenciais e horas canônicas do ponto |
 | `vw_flow_marcacao_detail` | colaborador Flow × dia × ordem | Auditoria de cada marcação na ordem retornada pela API |
@@ -27,10 +31,9 @@ diretamente ao PostgreSQL.
 | `vw_conferencia_horas_semana` | colaborador × semana | Resumo complementar da conferência diária e de suas pendências |
 | `vw_fila_revisao_horas` | colaborador × dia acionável | Revisão exclusiva de dias vencidos em que o Clockify supera o ponto |
 
-`vw_dashboard_entry_base` permanece somente como view de compatibilidade e está
-deprecated. Ela não deve ser usada por cards, consultas ou novas views. A view
-`vw_jira_ticket_sprint_detail` e as views antigas `vw_clockify_*` também estão
-deprecated; o contrato oficial de tickets é `vw_dashboard_ticket_sprint`.
+As views de compatibilidade `vw_dashboard_entry_base`,
+`vw_jira_ticket_sprint_detail` e `vw_clockify_*_detail` foram removidas na fase
+27. O contrato oficial usa exclusivamente as views listadas acima.
 
 ## Filtros
 
@@ -94,8 +97,7 @@ deprecated; o contrato oficial de tickets é `vw_dashboard_ticket_sprint`.
     Também preserva `calendar_capacity_hours`, `flow_non_working_days`,
     `flow_non_working_days_applied` e `flow_non_working_hours`;
     `effective_sprint_end_date` expõe o limite exclusivo usado pelas views. A
-    tabela `fato_sprint_capacidade` fica legada apenas durante a validação da
-    fase 25 e será removida na segunda rodada de limpeza.
+    tabela histórica `fato_sprint_capacidade` foi removida na fase 27.
 19. Os três cards operacionais usam `vw_dashboard_sprint_timebox`: `timebox_hours`
     é a capacidade produtiva efetiva, `hours_worked` é a soma das marcações
     Flow na janela efetiva, e `hours_logged` é a soma dos lançamentos Clockify

@@ -45,10 +45,9 @@ sprint_start <= momento atual
 sprint_state IN (active, closed)
 ```
 
-`vw_dashboard_entry_base`, `vw_jira_ticket_sprint_detail` e as views antigas
-`vw_clockify_*` permanecem apenas para compatibilidade nesta versão e estão
-deprecated. Novos cards devem usar `vw_dashboard_entry_final` e
-`vw_dashboard_ticket_sprint`.
+As views de compatibilidade foram removidas na fase 27. Cards novos e
+existentes devem usar `vw_dashboard_entry_final`, `vw_dashboard_entry_tag`,
+`vw_dashboard_entry_sprint` e `vw_dashboard_ticket_sprint`.
 
 Para os três cards operacionais, usar `vw_dashboard_sprint_timebox` com o
 filtro `sprint_state = 'active'`:
@@ -85,7 +84,7 @@ eles passam por `vw_dashboard_ticket_filterable`, que relaciona o ticket às
 issues mencionadas nos lançamentos Clockify. Por isso, tickets sem lançamento
 Clockify relacionado não aparecem quando um filtro de pessoa é aplicado.
 
-O filtro `Sprint` funciona diretamente em `vw_dashboard_entry_base` para
+O filtro `Sprint` funciona diretamente em `vw_dashboard_entry_final` para
 lançamentos com uma atribuição única e em `vw_dashboard_ticket_sprint` para
 Jira. Lançamentos com sprint ambígua permanecem identificados, mas não recebem
 um `sprint_id` canônico para evitar duplicação de horas.
@@ -120,7 +119,7 @@ cada card precise consultar uma tabela diferente ou depender de parâmetros SQL.
 
 ### KPIs estratégicos
 
-- **Horas totais gerais:** `SUM(duration_hours)` em `vw_dashboard_entry_base`.
+- **Horas totais gerais:** `SUM(duration_hours)` em `vw_dashboard_entry_final`.
 - **Horas totais da sprint:** `SUM(horas_totais)` em
   `vw_dashboard_sprint_productivity`. Inclui todos os lançamentos do período,
   mesmo sem issue Jira.
@@ -187,7 +186,7 @@ GROUP BY sprint_id;
 
 - Distribuição por tag: usar `vw_dashboard_entry_tag`; a soma pode superar o
   total quando um lançamento possui várias tags.
-- Sem tag: `has_tag = false` em `vw_dashboard_entry_base`.
+- Sem tag: `has_tag = false` em `vw_dashboard_entry_final`.
 - Sem ticket: `has_ticket = false`.
 - Qualidade dos lançamentos: acompanhar `horas_com_ticket`, `horas_sem_ticket`
   e o índice `SUM(horas_com_ticket) / SUM(horas_totais)`.
@@ -205,7 +204,7 @@ Executar no PostgreSQL:
 SELECT COUNT(*) FROM vw_dashboard_valid_sprint;
 
 SELECT COUNT(*) - COUNT(DISTINCT entry_id)
-FROM vw_dashboard_entry_base;
+FROM vw_dashboard_entry_final;
 
 SELECT COUNT(*) - COUNT(DISTINCT (issue_key, sprint_id))
 FROM vw_dashboard_ticket_sprint;

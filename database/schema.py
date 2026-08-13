@@ -24,6 +24,8 @@ from database.migrations.phase22 import ensure_phase22_schema
 from database.migrations.phase23 import ensure_phase23_schema
 from database.migrations.phase24 import ensure_phase24_schema
 from database.migrations.phase25 import ensure_phase25_schema
+from database.migrations.phase26 import ensure_phase26_schema
+from database.migrations.phase27 import ensure_phase27_schema
 
 
 def ensure_schema() -> None:
@@ -65,3 +67,8 @@ def _ensure_complete_schema() -> None:
     ensure_phase15_schema(engine)
     ensure_phase21_schema(engine)
     ensure_phase22_schema(engine)
+    ensure_phase26_schema(engine)
+    # Compatibility objects are intentionally removed last. Historical
+    # migrations still create them so upgrades and blank installs follow the
+    # same dependency-safe path before converging on the canonical schema.
+    ensure_phase27_schema(engine)

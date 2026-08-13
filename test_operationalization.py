@@ -98,6 +98,8 @@ def test_complete_schema_creates_dashboard_dependencies_before_capacity_views(
         "ensure_phase15_schema",
         "ensure_phase21_schema",
         "ensure_phase22_schema",
+        "ensure_phase26_schema",
+        "ensure_phase27_schema",
     ]
     for name in migration_names:
         monkeypatch.setattr(
@@ -122,7 +124,7 @@ def test_complete_schema_creates_dashboard_dependencies_before_capacity_views(
     assert events.index("ensure_phase24_schema") < events.index(
         "ensure_dashboard_views"
     )
-    assert events[-1] == "ensure_phase22_schema"
+    assert events[-1] == "ensure_phase27_schema"
 
 
 if __name__ == "__main__":

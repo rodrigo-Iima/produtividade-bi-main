@@ -387,12 +387,12 @@
           "engine": "PostgreSQL",
           "language": "Python/SQLAlchemy",
           "id": "clockify_kpi_source",
-          "sql": "SELECT * FROM vw_clockify_entry_detail; SELECT * FROM vw_clockify_entry_tag_detail;",
+          "sql": "SELECT * FROM vw_dashboard_entry_final; SELECT * FROM vw_dashboard_entry_tag;",
           "description": "Soma de duração no grão de lançamento e cálculos derivados da relação lançamento-tag.",
           "executed_at": "2026-07-18T00:06:44.043160+00:00",
           "tables_used": [
-            "vw_clockify_entry_detail",
-            "vw_clockify_entry_tag_detail"
+            "vw_dashboard_entry_final",
+            "vw_dashboard_entry_tag"
           ],
           "metric_definitions": [
             "Horas totais = soma de duration_seconds / 3600 na fato de lançamentos.",
@@ -410,11 +410,11 @@
           "engine": "PostgreSQL",
           "language": "Python/SQLAlchemy",
           "id": "clockify_entry_source",
-          "sql": "SELECT * FROM vw_clockify_entry_detail;",
+          "sql": "SELECT * FROM vw_dashboard_entry_final;",
           "description": "Fonte para total sem duplicação e horas por squad do colaborador.",
           "executed_at": "2026-07-18T00:06:44.043160+00:00",
           "tables_used": [
-            "vw_clockify_entry_detail"
+            "vw_dashboard_entry_final"
           ],
           "metric_definitions": [
             "Cada linha representa um lançamento Clockify."
@@ -429,11 +429,11 @@
           "engine": "PostgreSQL",
           "language": "Python/SQLAlchemy",
           "id": "clockify_tag_source",
-          "sql": "SELECT * FROM vw_clockify_entry_tag_detail;",
+          "sql": "SELECT * FROM vw_dashboard_entry_tag;",
           "description": "Fonte para a relação lançamento-tag e o detalhamento de foco.",
           "executed_at": "2026-07-18T00:06:44.043160+00:00",
           "tables_used": [
-            "vw_clockify_entry_tag_detail"
+            "vw_dashboard_entry_tag"
           ],
           "metric_definitions": [
             "Lançamentos com múltiplas tags contam integralmente em cada tag."
@@ -448,11 +448,11 @@
           "engine": "PostgreSQL",
           "language": "Python/SQLAlchemy",
           "id": "clockify_sprint_source",
-          "sql": "SELECT * FROM vw_clockify_entry_sprint_detail;",
+          "sql": "SELECT * FROM vw_dashboard_entry_sprint;",
           "description": "Fonte para atribuições de sprint e cruzamento tag × sprint.",
           "executed_at": "2026-07-18T00:06:44.043160+00:00",
           "tables_used": [
-            "vw_clockify_entry_sprint_detail"
+            "vw_dashboard_entry_sprint"
           ],
           "metric_definitions": [
             "O snapshot considera atribuições com status atribuído por padrão."
@@ -467,11 +467,11 @@
           "engine": "PostgreSQL",
           "language": "Python/SQLAlchemy",
           "id": "jira_sprint_source",
-          "sql": "SELECT * FROM vw_jira_ticket_sprint_detail;",
+          "sql": "SELECT * FROM vw_dashboard_ticket_sprint;",
           "description": "Fonte para tickets concluídos, planejamento e eficiência das sprints.",
           "executed_at": "2026-07-18T00:06:44.043160+00:00",
           "tables_used": [
-            "vw_jira_ticket_sprint_detail"
+            "vw_dashboard_ticket_sprint"
           ],
           "metric_definitions": [
             "Eficiência = tickets planejados concluídos / tickets planejados no início."
@@ -2897,12 +2897,12 @@
         "engine": "PostgreSQL",
         "language": "Python/SQLAlchemy",
         "id": "clockify_kpi_source",
-        "sql": "SELECT * FROM vw_clockify_entry_detail; SELECT * FROM vw_clockify_entry_tag_detail;",
+        "sql": "SELECT * FROM vw_dashboard_entry_final; SELECT * FROM vw_dashboard_entry_tag;",
         "description": "Soma de duração no grão de lançamento e cálculos derivados da relação lançamento-tag.",
         "executed_at": "2026-07-18T00:06:44.043160+00:00",
         "tables_used": [
-          "vw_clockify_entry_detail",
-          "vw_clockify_entry_tag_detail"
+          "vw_dashboard_entry_final",
+          "vw_dashboard_entry_tag"
         ],
         "metric_definitions": [
           "Horas totais = soma de duration_seconds / 3600 na fato de lançamentos.",
@@ -2920,11 +2920,11 @@
         "engine": "PostgreSQL",
         "language": "Python/SQLAlchemy",
         "id": "clockify_entry_source",
-        "sql": "SELECT * FROM vw_clockify_entry_detail;",
+        "sql": "SELECT * FROM vw_dashboard_entry_final;",
         "description": "Fonte para total sem duplicação e horas por squad do colaborador.",
         "executed_at": "2026-07-18T00:06:44.043160+00:00",
         "tables_used": [
-          "vw_clockify_entry_detail"
+          "vw_dashboard_entry_final"
         ],
         "metric_definitions": [
           "Cada linha representa um lançamento Clockify."
@@ -2939,11 +2939,11 @@
         "engine": "PostgreSQL",
         "language": "Python/SQLAlchemy",
         "id": "clockify_tag_source",
-        "sql": "SELECT * FROM vw_clockify_entry_tag_detail;",
+        "sql": "SELECT * FROM vw_dashboard_entry_tag;",
         "description": "Fonte para a relação lançamento-tag e o detalhamento de foco.",
         "executed_at": "2026-07-18T00:06:44.043160+00:00",
         "tables_used": [
-          "vw_clockify_entry_tag_detail"
+          "vw_dashboard_entry_tag"
         ],
         "metric_definitions": [
           "Lançamentos com múltiplas tags contam integralmente em cada tag."
@@ -2958,11 +2958,11 @@
         "engine": "PostgreSQL",
         "language": "Python/SQLAlchemy",
         "id": "clockify_sprint_source",
-        "sql": "SELECT * FROM vw_clockify_entry_sprint_detail;",
+        "sql": "SELECT * FROM vw_dashboard_entry_sprint;",
         "description": "Fonte para atribuições de sprint e cruzamento tag × sprint.",
         "executed_at": "2026-07-18T00:06:44.043160+00:00",
         "tables_used": [
-          "vw_clockify_entry_sprint_detail"
+          "vw_dashboard_entry_sprint"
         ],
         "metric_definitions": [
           "O snapshot considera atribuições com status atribuído por padrão."
@@ -2977,11 +2977,11 @@
         "engine": "PostgreSQL",
         "language": "Python/SQLAlchemy",
         "id": "jira_sprint_source",
-        "sql": "SELECT * FROM vw_jira_ticket_sprint_detail;",
+        "sql": "SELECT * FROM vw_dashboard_ticket_sprint;",
         "description": "Fonte para tickets concluídos, planejamento e eficiência das sprints.",
         "executed_at": "2026-07-18T00:06:44.043160+00:00",
         "tables_used": [
-          "vw_jira_ticket_sprint_detail"
+          "vw_dashboard_ticket_sprint"
         ],
         "metric_definitions": [
           "Eficiência = tickets planejados concluídos / tickets planejados no início."

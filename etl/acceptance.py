@@ -17,7 +17,19 @@ from queries import ticket_metrics, total_hours
 
 
 ACCEPTANCE_VERSION = 1
-ANALYTICAL_CONTRACT_VERSION = 25
+ANALYTICAL_CONTRACT_VERSION = 27
+
+DEPRECATED_OBJECTS = (
+    "vw_dashboard_entry_base",
+    "vw_jira_ticket_sprint_detail",
+    "vw_clockify_entry_detail",
+    "vw_clockify_entry_tag_detail",
+    "vw_clockify_entry_sprint_detail",
+    "vw_clockify_entry_issue_detail",
+    "dim_calendario",
+    "fato_sprint_capacidade",
+    "etl_view_version",
+)
 OUTPUT_DIR = Path(".runtime/validation")
 
 
@@ -92,6 +104,54 @@ def run_acceptance() -> dict[str, Any]:
         profile["row_counts"]["fato_jira_ticket_sprint"],
         profile["view_counts"]["vw_dashboard_ticket_sprint"]
         == profile["row_counts"]["fato_jira_ticket_sprint"],
+        "critical",
+    )
+    _add_check(
+        checks,
+        "entry_tag_metrics_allocation",
+        "Horas rateadas por tag reconciliam com as entradas que possuem tag",
+        profile["entry_tag_allocated_hours"],
+        profile["tagged_entry_hours"],
+        abs(
+            profile["entry_tag_allocated_hours"]
+            - profile["tagged_entry_hours"]
+        ) < 0.000001,
+        "critical",
+    )
+    _add_check(
+        checks,
+        "ticket_actual_hours_grain",
+        "View de horas reais mantém ticket × Sprint × colaborador único",
+        profile["ticket_actual_hours_duplicates"],
+        "0",
+        profile["ticket_actual_hours_duplicates"] == 0,
+        "critical",
+    )
+    _add_check(
+        checks,
+        "sprint_timebox_detail_grain",
+        "View de timebox mantém Sprint × colaborador único",
+        profile["sprint_timebox_detail_duplicates"],
+        "0",
+        profile["sprint_timebox_detail_duplicates"] == 0,
+        "critical",
+    )
+    _add_check(
+        checks,
+        "data_freshness_sources",
+        "Freshness expõe exatamente Jira, Clockify e Flow",
+        profile["data_freshness_sources"],
+        "3",
+        profile["data_freshness_sources"] == 3,
+        "high",
+    )
+    _add_check(
+        checks,
+        "deprecated_objects_removed",
+        "Objetos de compatibilidade foram removidos",
+        profile["deprecated_objects_present"],
+        "0",
+        profile["deprecated_objects_present"] == 0,
         "critical",
     )
 
@@ -273,6 +333,10 @@ def _profile() -> dict[str, Any]:
     views = (
         "vw_dashboard_entry_final",
         "vw_dashboard_ticket_sprint",
+        "vw_dashboard_entry_tag_metrics",
+        "vw_dashboard_ticket_actual_hours",
+        "vw_dashboard_sprint_timebox_detail",
+        "vw_dashboard_data_freshness",
     )
     session = SessionLocal()
     try:
@@ -287,14 +351,54 @@ def _profile() -> dict[str, Any]:
         schema_version = int(
             session.execute(text("SELECT COALESCE(MAX(version), 0) FROM etl_schema_version")).scalar_one()
         )
-        # etl_schema_version is the single version authority. The legacy
-        # etl_view_version table remains only for compatibility in this release.
+        # etl_schema_version is the single version authority.
         view_version = schema_version
         result = {
             "schema_version": schema_version,
             "view_version": view_version,
             "row_counts": row_counts,
             "view_counts": view_counts,
+            "entry_tag_allocated_hours": _float(session.execute(text(
+                """
+                SELECT COALESCE(SUM(allocated_duration_hours), 0)
+                FROM vw_dashboard_entry_tag_metrics
+                """
+            )).scalar_one()),
+            "tagged_entry_hours": _float(session.execute(text(
+                """
+                SELECT COALESCE(SUM(e.duration_hours), 0)
+                FROM vw_dashboard_entry_final AS e
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM bridge_clockify_entry_tag AS b
+                    WHERE b.entry_id = e.entry_id
+                )
+                """
+            )).scalar_one()),
+            "ticket_actual_hours_duplicates": int(session.execute(text(
+                """
+                SELECT COUNT(*) - COUNT(DISTINCT (issue_key, sprint_id, user_id))
+                FROM vw_dashboard_ticket_actual_hours
+                """
+            )).scalar_one()),
+            "sprint_timebox_detail_duplicates": int(session.execute(text(
+                """
+                SELECT COUNT(*) - COUNT(DISTINCT (sprint_id, user_id))
+                FROM vw_dashboard_sprint_timebox_detail
+                """
+            )).scalar_one()),
+            "data_freshness_sources": int(session.execute(text(
+                "SELECT COUNT(DISTINCT source) FROM vw_dashboard_data_freshness"
+            )).scalar_one()),
+            "deprecated_objects_present": int(session.execute(text(
+                """
+                SELECT COUNT(*)
+                FROM pg_class AS c
+                JOIN pg_namespace AS n ON n.oid = c.relnamespace
+                WHERE n.nspname = 'public'
+                  AND c.relname = ANY(CAST(:object_names AS text[]))
+                """
+            ), {"object_names": list(DEPRECATED_OBJECTS)}).scalar_one()),
             "clockify_date_range": _date_range(session, "fato_clockify_entry", "entry_date"),
             "jira_updated_range": _date_range(session, "dim_ticket_jira", "updated_at"),
             "sprint_date_range": _date_range(session, "dim_sprint", "sprint_start"),

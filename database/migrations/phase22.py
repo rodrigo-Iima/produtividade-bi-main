@@ -14,13 +14,16 @@ WITH point_by_user_sprint AS (
     SELECT
         c.sprint_id,
         c.user_id,
-        COALESCE(SUM(p.worked_hours), 0) AS hours_worked,
-        COUNT(p.work_date) AS flow_observed_day_count,
+        COALESCE(SUM(p.point_worked_hours), 0) AS hours_worked,
         COUNT(p.work_date) FILTER (
-            WHERE p.marking_count > 0
+            WHERE p.flow_covered IS TRUE
+        ) AS flow_observed_day_count,
+        COUNT(p.work_date) FILTER (
+            WHERE p.flow_covered IS TRUE
+              AND p.point_mark_count > 0
         ) AS flow_marked_day_count
     FROM public.vw_dashboard_sprint_capacity_detail AS c
-    LEFT JOIN public.vw_flow_ponto_dia AS p
+    LEFT JOIN public.vw_conferencia_horas_dia AS p
       ON p.user_id = c.user_id
      AND p.work_date >= (
          c.sprint_start AT TIME ZONE 'America/Sao_Paulo'
@@ -79,7 +82,7 @@ GROUP BY
     c.squad_name;
 
 COMMENT ON VIEW public.vw_dashboard_sprint_timebox IS
-    'Grão: Sprint × Squad. timebox_hours usa a janela real de conclusão; hours_worked vem das marcações Flow; hours_logged vem dos lançamentos Clockify.';
+    'Grão: Sprint × Squad. timebox_hours usa a janela real de conclusão; hours_worked vem da conferência diária Flow × Clockify, única por usuário/data; hours_logged vem dos lançamentos Clockify.';
 
 DO $grant_timebox_views$
 BEGIN

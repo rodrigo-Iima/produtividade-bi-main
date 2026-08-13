@@ -20,8 +20,8 @@ O schema v2 está aplicado no PostgreSQL. O grão persistido é:
 - `dim_colaborador`: uma linha por colaborador;
 - `dim_squad_alias`: uma linha por nome bruto de squad e origem;
 - `dim_tag`, `dim_papel_tag`, `dim_status` e `dim_sprint`: dimensões de
-  referência. `dim_calendario` permanece somente como legado e está marcado
-  deprecated até a segunda rodada de limpeza.
+  referência. Datas analíticas são derivadas diretamente dos timestamps; a
+  dimensão calendário legada foi removida na fase 27.
 
 ## Regras de totalização
 

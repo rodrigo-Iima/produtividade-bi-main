@@ -43,6 +43,32 @@ def main() -> int:
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
 
+    if args.command == "backfill-jira-metadata":
+        from etl.jira import JiraService
+
+        service = JiraService()
+        projects = args.projects or None
+        result = {
+            "issue_types": service.backfill_issue_types(projects=projects),
+            "crossing_flags": service.backfill_crossing_flags(projects=projects),
+            "original_estimates": service.backfill_original_estimates(
+                projects=projects,
+            ),
+        }
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "backfill-sprint-changelog":
+        from etl.jira_sprint_changelog import run_sprint_changelog_etl
+
+        result = run_sprint_changelog_etl(
+            incremental=False,
+            max_workers=args.max_workers,
+            issue_keys=None,
+        )
+        print(json.dumps({"inserted": result}, ensure_ascii=False, indent=2))
+        return 0
+
     if args.command == "status":
         from .status import get_status
 
@@ -93,6 +119,26 @@ def _build_parser() -> argparse.ArgumentParser:
         "--projects",
         nargs="+",
         help="projetos Jira; por padrão usa ZGT ZG ZGTN SRE",
+    )
+
+    jira_metadata_parser = subparsers.add_parser(
+        "backfill-jira-metadata",
+        help="atualiza tipo, atravessamento e estimativa dos tickets existentes",
+    )
+    jira_metadata_parser.add_argument(
+        "--projects",
+        nargs="+",
+        help="projetos Jira; por padrão usa ZGT ZG ZGTN SRE",
+    )
+
+    changelog_parser = subparsers.add_parser(
+        "backfill-sprint-changelog",
+        help="reprocessa o changelog de Sprint de todos os tickets no escopo",
+    )
+    changelog_parser.add_argument(
+        "--max-workers",
+        type=_positive_int,
+        default=8,
     )
 
     status_parser = subparsers.add_parser(

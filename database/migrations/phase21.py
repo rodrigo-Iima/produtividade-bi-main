@@ -1,8 +1,8 @@
 """Build the dynamic Sprint capacity contract.
 
 Capacity is calculated from the current Sprint × Squad × Clockify capacity
-group dimensions. ``fato_sprint_capacidade`` remains only as a deprecated
-compatibility snapshot until the second cleanup round.
+group dimensions. Compatibility aliases remain in the view contract even
+after the historical materialized fact is removed by phase 27.
 """
 
 from sqlalchemy import Engine, text
@@ -94,8 +94,16 @@ WITH capacity_source AS (
             )::DATE
         END AS effective_end_date
     FROM public.dim_sprint AS s
-    JOIN (SELECT DISTINCT sprint_id FROM capacity_source) AS cs
+        JOIN (SELECT DISTINCT sprint_id FROM capacity_source) AS cs
       ON cs.sprint_id = s.sprint_id
+),
+flow_day AS (
+    SELECT DISTINCT ON (user_id, work_date)
+        user_id,
+        work_date,
+        kind
+    FROM public.vw_flow_ponto_dia
+    ORDER BY user_id, work_date, collected_at DESC
 ),
 capacity_day_summary AS (
     SELECT
@@ -128,7 +136,7 @@ capacity_day_summary AS (
         w.effective_end_date - 1,
         INTERVAL '1 day'
     ) AS sprint_day(work_date)
-    LEFT JOIN public.vw_flow_ponto_dia AS p
+    LEFT JOIN flow_day AS p
       ON p.user_id = c.user_id
      AND p.work_date = sprint_day.work_date::DATE
     GROUP BY c.sprint_id, c.user_id
@@ -261,7 +269,7 @@ LEFT JOIN entry_by_user_sprint AS e
  AND e.user_id = c.user_id;
 
 COMMENT ON VIEW public.vw_dashboard_sprint_capacity_detail IS
-    'Grão: colaborador × Sprint. A capacidade é dinâmica, derivada da configuração vigente de grupos do Clockify; a tabela fato_sprint_capacidade fica apenas como legado de compatibilidade nesta versão. A janela real de conclusão reduz o timebox quando disponível.';
+    'Grão: colaborador × Sprint. A capacidade é dinâmica, derivada da configuração vigente de grupos do Clockify; dias Flow são deduplicados por colaborador/data; a janela real de conclusão reduz o timebox quando disponível.';
 
 CREATE VIEW public.vw_dashboard_sprint_capacity AS
 SELECT
@@ -337,7 +345,7 @@ GROUP BY
     squad_name;
 
 COMMENT ON VIEW public.vw_dashboard_sprint_capacity IS
-    'Grão: Sprint × Squad. capacity_hours é a capacidade efetiva na janela real da Sprint e é recalculada a partir das dimensões atuais; os campos snapshot_* são aliases de compatibilidade até a remoção da fato legada.';
+    'Grão: Sprint × Squad. capacity_hours é a capacidade efetiva na janela real da Sprint e é recalculada a partir das dimensões atuais; os campos snapshot_* são aliases históricos do contrato.';
 
 CREATE VIEW public.vw_dashboard_sprint_efficiency AS
 SELECT

@@ -29,13 +29,18 @@ Na raiz do projeto:
 # Reexecuta apenas a validação sobre dados já carregados
 ./.venv/bin/python -m operationalization acceptance
 
-# Backfill controlado do originalEstimate para tickets já carregados
-./.venv/bin/python -m operationalization backfill-estimates
+# Backfill completo e idempotente dos metadados Jira históricos
+./.venv/bin/python -m operationalization backfill-jira-metadata
+
+# Reprocessa o changelog de Sprint de todos os tickets no escopo
+./.venv/bin/python -m operationalization backfill-sprint-changelog
 ```
 
-O backfill consulta o `timetracking.originalEstimateSeconds` do Jira e atualiza
-somente a coluna de estimativa dos tickets existentes. A operação é idempotente;
-o ETL incremental passa a manter o valor atualizado nas execuções seguintes.
+O backfill de metadados consulta tipo nativo, Atravessamento e
+`timetracking.originalEstimateSeconds` no Jira e atualiza somente os tickets
+existentes. A operação é idempotente; uma segunda execução deve informar zero
+atualizações. O backfill de changelog materializa relações históricas
+ticket × Sprint que não aparecem no estado atual do ticket.
 
 O runner usa `.runtime/etl.lock` para impedir duas execuções simultâneas no
 mesmo host. Os resultados continuam registrados em `etl_run_log`, e o aceite
