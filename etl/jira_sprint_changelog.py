@@ -162,6 +162,8 @@ class SprintChangelogETL:
             return len(records)
         except Exception as exc:
             session.rollback()
+            status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            is_not_found = status_code == 404
             session.query(JiraSprintChangelog).filter(
                 JiraSprintChangelog.issue_key == issue_key
             ).delete(synchronize_session=False)
@@ -171,10 +173,16 @@ class SprintChangelogETL:
                 change_type="added",
                 changed_at=datetime.now(timezone.utc),
                 fetched_at=datetime.now(timezone.utc),
-                processing_status="failed",
+                # Keep the historical ticket in the warehouse when Jira no
+                # longer exposes it. A 404 is a terminal source state, not an
+                # operational ETL failure that should poison every backfill.
+                processing_status="not_found" if is_not_found else "failed",
                 error_message=str(exc),
             ))
             session.commit()
+            if is_not_found:
+                print(f"[SprintChangelogETL] Not found in Jira: {issue_key}")
+                return 0
             raise
         finally:
             session.close()
