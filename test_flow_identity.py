@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from clients.flow_dto import FlowEmployeeContract
+from clients.flow_dto import FlowEmployeeContract, FlowPerson
 from etl.clockify import ClockifyService
 from etl.flow_identity import (
     FlowIdentityError,
@@ -84,6 +84,23 @@ def _flow_contract(
         hierarchy_circle="Produtos",
         sector="Tecnologia",
         unit="Operação",
+    )
+
+
+def _flow_person(
+    person_id,
+    *,
+    corporate_email=None,
+    email=None,
+    name=None,
+):
+    return FlowPerson(
+        person_id=str(person_id),
+        name=name or f"Flow {person_id}",
+        social_name=None,
+        corporate_email=corporate_email,
+        email=email,
+        is_active=True,
     )
 
 
@@ -353,11 +370,10 @@ def test_identity_etl_fetches_syncs_and_commits():
         setup_session.add(_clockify_user("u1", "person@example.com"))
         setup_session.commit()
 
-    client = _FakeEmployeeClient(
+    client = _FakePeopleClient(
         [
-            _flow_contract(
+            _flow_person(
                 "p1",
-                "c1",
                 corporate_email="person@example.com",
             )
         ]
@@ -369,12 +385,50 @@ def test_identity_etl_fetches_syncs_and_commits():
 
     assert client.calls == 1
     assert result["people"] == 1
-    assert result["contracts"] == 1
     assert result["mapped"] == 1
     with factory() as check_session:
         assert check_session.query(DimFlowPessoa).count() == 1
-        assert check_session.query(DimFlowContrato).count() == 1
+        assert check_session.query(DimFlowContrato).count() == 0
     engine.dispose()
+
+
+def test_people_sync_keeps_contract_history_untouched(session):
+    session.add(_clockify_user("u1", "person@example.com"))
+    session.add(
+        DimFlowPessoa(
+            flow_person_id="p1",
+            name="Pessoa existente",
+            mapping_status="unmapped_no_match",
+            is_active=True,
+            flow_last_seen_at=OBSERVED_AT,
+            updated_at=OBSERVED_AT,
+        )
+    )
+    session.flush()
+    session.add(
+        DimFlowContrato(
+            flow_contract_id="historical-contract",
+            flow_person_id="p1",
+            status=1,
+            is_active=True,
+            flow_last_seen_at=OBSERVED_AT,
+            updated_at=OBSERVED_AT,
+        )
+    )
+    session.flush()
+
+    result = FlowIdentityService().sync_people(
+        session,
+        [_flow_person("p1", corporate_email="person@example.com")],
+        observed_at=OBSERVED_AT,
+    )
+
+    assert result["mapped"] == 1
+    assert session.get(DimFlowPessoa, "p1").clockify_user_id == "u1"
+    contract = session.get(DimFlowContrato, "historical-contract")
+    assert contract.is_active is True
+    # SQLite strips timezone metadata; the timestamp value itself is retained.
+    assert contract.flow_last_seen_at.replace(tzinfo=timezone.utc) == OBSERVED_AT
 
 
 def test_identity_etl_rejects_empty_snapshot_without_mutating_rows():
@@ -414,7 +468,7 @@ def test_identity_etl_rejects_empty_snapshot_without_mutating_rows():
 
     with pytest.raises(FlowIdentityError, match="zero colaboradores"):
         FlowIdentityETL(
-            client=_FakeEmployeeClient([]),
+            client=_FakePeopleClient([]),
             session_factory=factory,
         ).run(OBSERVED_AT)
 
@@ -424,11 +478,11 @@ def test_identity_etl_rejects_empty_snapshot_without_mutating_rows():
     engine.dispose()
 
 
-class _FakeEmployeeClient:
-    def __init__(self, contracts):
-        self.contracts = contracts
+class _FakePeopleClient:
+    def __init__(self, people):
+        self.people = people
         self.calls = 0
 
-    def get_active_employee_contracts(self):
+    def get_active_people(self):
         self.calls += 1
-        return self.contracts
+        return self.people

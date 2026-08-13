@@ -10,8 +10,8 @@ from typing import Any, Mapping
 import requests
 
 from clients.flow_dto import (
-    FlowEmployeeContract,
     FlowPayloadError,
+    FlowPerson,
     FlowPoints,
 )
 from config.settings import (
@@ -30,8 +30,6 @@ class FlowAPIError(RuntimeError):
 
 class FlowClient:
     """Minimal read-only client for the first phase of the Flow integration."""
-
-    ACTIVE_STATUS = 1
 
     def __init__(
         self,
@@ -90,46 +88,44 @@ class FlowClient:
     def __exit__(self, *_args) -> None:
         self.close()
 
-    def get_active_employee_contracts(
+    def get_active_people(
         self,
         page_size: int = 200,
-    ) -> list[FlowEmployeeContract]:
-        """Fetch every active Flow employee contract with offset pagination."""
+    ) -> list[FlowPerson]:
+        """Fetch active identities from the non-contractual People endpoint."""
         if page_size <= 0:
             raise ValueError("page_size deve ser maior que zero")
 
         start = 0
-        contracts: list[FlowEmployeeContract] = []
+        people: list[FlowPerson] = []
 
         while True:
             payload = self._get(
-                "/Funcionarios",
+                "/Pessoas",
                 params={
-                    "Situacao": self.ACTIVE_STATUS,
                     "Inicio": start,
                     "Quantidade": page_size,
-                    "Ordem": "IdDaPessoa",
-                    "OrdemTipo": 0,
                 },
             )
-            records, total = _unwrap_records(payload, "/Funcionarios")
+            records, total = _unwrap_records(payload, "/Pessoas")
             if not records:
                 break
 
             try:
-                contracts.extend(
-                    FlowEmployeeContract.from_api(record)
+                people.extend(
+                    person
                     for record in records
+                    if (person := FlowPerson.from_api(record)).is_active
                 )
             except FlowPayloadError as exc:
                 raise FlowAPIError(
-                    "Resposta inválida de /Funcionarios"
+                    "Resposta inválida de /Pessoas"
                 ) from exc
             start += len(records)
             if start >= total:
                 break
 
-        return contracts
+        return people
 
     def get_points(self, person_id: str | int) -> FlowPoints:
         """Fetch the available point periods for one distinct Flow person."""

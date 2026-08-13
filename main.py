@@ -159,9 +159,9 @@ def _run_flow_steps(logger: EtlRunLogger | None) -> list[str]:
         result = FlowIdentityETL(client=get_flow_client()).run()
         return {
             **result,
-            "extracted": result["contracts"],
+            "extracted": result["people"],
             "transformed": result["people"],
-            "loaded": result["people"] + result["contracts"],
+            "loaded": result["people"],
         }
 
     try:

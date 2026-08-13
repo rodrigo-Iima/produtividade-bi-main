@@ -10,7 +10,7 @@ from typing import Callable, Iterable
 from sqlalchemy.orm import Session
 
 from clients.flow_client import FlowClient
-from clients.flow_dto import FlowEmployeeContract
+from clients.flow_dto import FlowEmployeeContract, FlowPerson
 from models.dim_colaborador import DimColaborador
 from models.dim_flow_contrato import DimFlowContrato
 from models.dim_flow_pessoa import DimFlowPessoa
@@ -21,7 +21,7 @@ class FlowIdentityError(ValueError):
 
 
 class FlowIdentityETL:
-    """Fetch active Flow contracts and persist their identity mapping."""
+    """Fetch active Flow people and persist their Clockify mapping."""
 
     def __init__(
         self,
@@ -45,15 +45,15 @@ class FlowIdentityETL:
 
         session = session_factory()
         try:
-            contracts = client.get_active_employee_contracts()
-            if not contracts:
+            people = client.get_active_people()
+            if not people:
                 raise FlowIdentityError(
                     "Flow retornou zero colaboradores ativos; "
                     "carga de identidades não aplicada"
                 )
-            result = FlowIdentityService().sync(
+            result = FlowIdentityService().sync_people(
                 session,
-                contracts,
+                people,
                 observed_at=observed_at,
             )
             session.commit()
@@ -278,6 +278,85 @@ class FlowIdentityService:
             "ambiguous_email": sum(
                 row.mapping_status == "ambiguous_email"
                 for row in active_people
+            ),
+        }
+
+    def sync_people(
+        self,
+        session: Session,
+        people: Iterable[FlowPerson],
+        observed_at: datetime | None = None,
+    ) -> dict[str, int]:
+        """Replace the active person snapshot without reading contract data."""
+        observed_at = observed_at or datetime.now(timezone.utc)
+        person_rows = list(people)
+        inputs = {
+            person.person_id: _FlowPersonInput(
+                person_id=person.person_id,
+                name=person.name,
+                social_name=person.social_name,
+                corporate_email=person.corporate_email,
+                email=person.email,
+            )
+            for person in person_rows
+        }
+        if len(inputs) != len(person_rows):
+            raise FlowIdentityError("Flow retornou pessoas duplicadas")
+
+        existing_people = {
+            row.flow_person_id: row
+            for row in session.query(DimFlowPessoa).all()
+        }
+        for row in existing_people.values():
+            row.is_active = False
+            if row.mapping_method != "manual":
+                row.clockify_user_id = None
+                row.mapping_status = "unmapped_no_match"
+                row.mapping_method = None
+        session.flush()
+
+        decisions = self._mapping_decisions(session, inputs, existing_people)
+        for person in inputs.values():
+            row = existing_people.get(person.person_id)
+            if row is None:
+                row = DimFlowPessoa(
+                    flow_person_id=person.person_id,
+                    name=person.name,
+                    mapping_status="unmapped_no_match",
+                    is_active=True,
+                    flow_last_seen_at=observed_at,
+                    updated_at=observed_at,
+                )
+                session.add(row)
+                existing_people[person.person_id] = row
+
+            row.name = person.name
+            row.social_name = person.social_name
+            row.corporate_email = person.corporate_email
+            row.email = person.email
+            row.is_active = True
+            row.flow_last_seen_at = observed_at
+            row.updated_at = observed_at
+            if row.mapping_method != "manual":
+                decision = decisions[person.person_id]
+                row.clockify_user_id = decision.clockify_user_id
+                row.mapping_status = decision.status
+                row.mapping_method = decision.method
+
+        session.flush()
+        active_people = [existing_people[person_id] for person_id in inputs]
+        return {
+            "people": len(inputs),
+            "mapped": sum(row.mapping_status == "mapped" for row in active_people),
+            "manual": sum(row.mapping_method == "manual" for row in active_people),
+            "unmapped_no_email": sum(
+                row.mapping_status == "unmapped_no_email" for row in active_people
+            ),
+            "unmapped_no_match": sum(
+                row.mapping_status == "unmapped_no_match" for row in active_people
+            ),
+            "ambiguous_email": sum(
+                row.mapping_status == "ambiguous_email" for row in active_people
             ),
         }
 

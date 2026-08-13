@@ -40,34 +40,27 @@ class FakeSession:
         self.closed = True
 
 
-def _employee(
+def _person(
     person_id,
-    contract_id,
     *,
     corporate_email=" Product.User@Example.com ",
+    personal_email="personal@example.com",
+    active=1,
 ):
     return {
-        "idDaPessoa": person_id,
-        "idDoContrato": contract_id,
-        "nomeDaPessoa": "Pessoa de Teste",
-        "nomeSocialDaPessoa": None,
-        "emailCorporativo": corporate_email,
-        "email": "personal@example.com",
-        "situacao": 1,
-        "dataDeAdmissao": "2024-01-15T00:00:00",
-        "dataDeRescisao": None,
-        "estabelecimento": "Unidade",
-        "cargo": "Desenvolvedor",
-        "funcao": "Engenharia",
-        "postoDeTrabalho": "Remoto",
-        "circuloHierarquico": "Produtos",
-        "descricaoDoSetor": "Tecnologia",
-        "descricaoDaUnidade": "Operação",
+        "id": person_id,
+        "nome": "Pessoa de Teste",
+        "nomeSocial": None,
+        "ativo": active,
+        "enderecosEletronicos": [
+            {"tipoDeEnderecoEletronico": 1, "endereco": corporate_email},
+            {"tipoDeEnderecoEletronico": 2, "endereco": personal_email},
+        ],
         # Sensitive fields returned by Flow must not cross the DTO boundary.
         "cpf": "00000000000",
         "pis": "00000000000",
-        "salarioContratual": 999999,
-        "numeroDaContaDeposito": "not-allowed",
+        "identidade": "not-allowed",
+        "logradouro": "not-allowed",
     }
 
 
@@ -104,7 +97,7 @@ def _jwt_with_exp(expiration):
 
 def test_logs_in_automatically_when_static_token_is_absent():
     session = FakeSession(
-        [FakeResponse(_employee_page([_employee(10, 100)], total=1))],
+        [FakeResponse(_employee_page([_person(10)], total=1))],
         post_responses=[_login_response()],
     )
     client = FlowClient(
@@ -115,7 +108,7 @@ def test_logs_in_automatically_when_static_token_is_absent():
         session=session,
     )
 
-    client.get_active_employee_contracts()
+    client.get_active_people()
 
     login_call = session.post_calls[0]
     assert login_call[0].endswith("/api/v1/Login")
@@ -130,7 +123,7 @@ def test_logs_in_automatically_when_static_token_is_absent():
 
 def test_logs_in_before_request_when_jwt_is_expired():
     session = FakeSession(
-        [FakeResponse(_employee_page([_employee(10, 100)], total=1))],
+        [FakeResponse(_employee_page([_person(10)], total=1))],
         post_responses=[_login_response("renewed-token")],
     )
     client = FlowClient(
@@ -140,7 +133,7 @@ def test_logs_in_before_request_when_jwt_is_expired():
         session=session,
     )
 
-    client.get_active_employee_contracts()
+    client.get_active_people()
 
     assert len(session.post_calls) == 1
     assert session.calls[0][1]["headers"]["Authorization"] == (
@@ -152,7 +145,7 @@ def test_reauthenticates_once_after_unauthorized_response():
     session = FakeSession(
         [
             FakeResponse({}, status_code=401),
-            FakeResponse(_employee_page([_employee(10, 100)], total=1)),
+            FakeResponse(_employee_page([_person(10)], total=1)),
         ],
         post_responses=[_login_response("renewed-token")],
     )
@@ -163,7 +156,7 @@ def test_reauthenticates_once_after_unauthorized_response():
         session=session,
     )
 
-    client.get_active_employee_contracts()
+    client.get_active_people()
 
     assert len(session.calls) == 2
     assert len(session.post_calls) == 1
@@ -196,19 +189,19 @@ def test_rejects_login_functional_error_without_exposing_response_details():
     assert "sensitive login detail" not in str(error.value)
 
 
-def test_fetches_active_employee_contracts_with_offset_pagination():
+def test_fetches_active_people_with_offset_pagination():
     session = FakeSession(
         [
             FakeResponse(
                 _employee_page(
-                    [_employee(10, 100), _employee(20, 200)],
+                    [_person(10), _person(20)],
                     total=3,
                 )
             ),
             FakeResponse(
                 _employee_page(
-                    [_employee(30, 300, corporate_email=None)],
-                    total=3,
+                    [_person(30, corporate_email=None), _person(40, active=0)],
+                    total=4,
                 )
             ),
         ]
@@ -219,46 +212,43 @@ def test_fetches_active_employee_contracts_with_offset_pagination():
         session=session,
     )
 
-    contracts = client.get_active_employee_contracts(page_size=2)
+    people = client.get_active_people(page_size=2)
 
-    assert [contract.person_id for contract in contracts] == [
+    assert [person.person_id for person in people] == [
         "10",
         "20",
         "30",
     ]
-    assert contracts[0].corporate_email == "product.user@example.com"
-    assert contracts[2].corporate_email is None
-    assert contracts[0].admitted_at.tzinfo == FLOW_TIMEZONE
+    assert people[0].corporate_email == "product.user@example.com"
+    assert people[0].email == "personal@example.com"
+    assert people[2].corporate_email is None
 
     first_call = session.calls[0]
     second_call = session.calls[1]
-    assert first_call[0].endswith("/api/v1/Funcionarios")
+    assert first_call[0].endswith("/api/v1/Pessoas")
     assert first_call[1]["params"] == {
-        "Situacao": 1,
         "Inicio": 0,
         "Quantidade": 2,
-        "Ordem": "IdDaPessoa",
-        "OrdemTipo": 0,
     }
     assert second_call[1]["params"]["Inicio"] == 2
     assert first_call[1]["headers"]["Authorization"] == "Bearer test-token"
 
 
-def test_employee_dto_discards_sensitive_flow_fields():
+def test_person_dto_discards_sensitive_flow_fields():
     session = FakeSession(
-        [FakeResponse(_employee_page([_employee(10, 100)], total=1))]
+        [FakeResponse(_employee_page([_person(10)], total=1))]
     )
     contract = FlowClient(
         token="test-token",
         session=session,
-    ).get_active_employee_contracts()[0]
+    ).get_active_people()[0]
 
     allowed = asdict(contract)
 
     assert "cpf" not in allowed
     assert "pis" not in allowed
-    assert "salarioContratual" not in allowed
-    assert "numeroDaContaDeposito" not in allowed
+    assert "identidade" not in allowed
+    assert "logradouro" not in allowed
 
 
 def test_parses_point_moments_using_requested_person_and_sao_paulo_timezone():
@@ -372,7 +362,7 @@ def test_rejects_functional_error_without_exposing_response_details():
         FlowClient(
             token="test-token",
             session=session,
-        ).get_active_employee_contracts()
+        ).get_active_people()
 
     assert "falha funcional" in str(error.value)
     assert "sensitive employee detail" not in str(error.value)

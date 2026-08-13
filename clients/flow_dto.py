@@ -16,6 +16,58 @@ class FlowPayloadError(ValueError):
 
 
 @dataclass(frozen=True, slots=True)
+class FlowPerson:
+    """Allowlisted identity fields returned by ``/Pessoas``."""
+
+    CORPORATE_EMAIL_TYPE = 1
+    PERSONAL_EMAIL_TYPE = 2
+
+    person_id: str
+    name: str
+    social_name: str | None
+    corporate_email: str | None
+    email: str | None
+    is_active: bool
+
+    @classmethod
+    def from_api(cls, raw: Mapping[str, Any]) -> FlowPerson:
+        electronic_addresses = raw.get("enderecosEletronicos") or []
+        if not isinstance(electronic_addresses, list):
+            raise FlowPayloadError("enderecosEletronicos deve ser uma lista")
+
+        emails: dict[int, str] = {}
+        for item in electronic_addresses:
+            address = _required_mapping(item, "enderecosEletronicos")
+            try:
+                address_type = _required_int(
+                    address.get("tipoDeEnderecoEletronico"),
+                    "tipoDeEnderecoEletronico",
+                )
+            except FlowPayloadError:
+                continue
+            email = _normalize_email(address.get("endereco"))
+            if address_type in {
+                cls.CORPORATE_EMAIL_TYPE,
+                cls.PERSONAL_EMAIL_TYPE,
+            } and email:
+                current = emails.get(address_type)
+                if current is not None and current != email:
+                    raise FlowPayloadError(
+                        "Pessoa possui múltiplos e-mails do mesmo tipo"
+                    )
+                emails[address_type] = email
+
+        return cls(
+            person_id=_required_identifier(raw.get("id"), "id"),
+            name=_required_text(raw.get("nome"), "nome"),
+            social_name=_optional_text(raw.get("nomeSocial")),
+            corporate_email=emails.get(cls.CORPORATE_EMAIL_TYPE),
+            email=emails.get(cls.PERSONAL_EMAIL_TYPE),
+            is_active=_required_int(raw.get("ativo"), "ativo") == 1,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class FlowEmployeeContract:
     """Minimal employee/contract data needed to map Flow to Clockify."""
 

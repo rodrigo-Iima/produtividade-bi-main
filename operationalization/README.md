@@ -76,9 +76,12 @@ CLOCKIFY_INCREMENTAL_LOOKBACK_DAYS=10
 
 As credenciais do Login devem ficar no `.env` não versionado ou no gerenciador
 de segredos do ambiente. O ETL autentica no início da chamada, extrai
-`registros[0].token` e mantém o JWT somente em memória. Quando habilitada, a execução sincroniza primeiro os colaboradores
-Flow com os usuários ativos do Clockify e consulta marcações apenas para os
-vínculos ativos e resolvidos.
+`registros[0].token` e mantém o JWT somente em memória. Quando habilitada, a
+execução consulta as identidades em `/api/v1/Pessoas`, extrai somente os campos
+permitidos pelo DTO e sincroniza os colaboradores Flow com os usuários ativos
+do Clockify. O endpoint `/api/v1/Funcionarios` não é utilizado porque seu
+contrato pode expor dados salariais. As marcações são consultadas apenas para
+os vínculos ativos e resolvidos.
 
 A janela incremental do Clockify relê alterações recentes. Depois da carga do
 Flow, a conferência diária é recalculada e mantém um histórico somente quando
