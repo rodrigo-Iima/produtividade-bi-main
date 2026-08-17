@@ -2,6 +2,10 @@ services:
   postgres:
     image: postgres:16
     restart: unless-stopped
+    # Reporting queries use PostgreSQL dynamic shared memory. The Docker
+    # default (64 MB) is too small for the dashboard and ETL workload and can
+    # make PostgreSQL workers fail while attaching to a parallel-query segment.
+    shm_size: "1gb"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-produtividade}
       POSTGRES_USER: ${POSTGRES_USER:-produtividade}
