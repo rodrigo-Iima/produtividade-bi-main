@@ -80,22 +80,18 @@ WITH capacity_source AS (
       AND g.capacity_hours_week > 0
 ), sprint_windows AS (
     SELECT
-        s.sprint_id,
-        s.sprint_start,
-        s.sprint_completed_at,
-        CASE
-            WHEN LOWER(COALESCE(s.sprint_state, '')) = 'closed'
-             AND s.sprint_completed_at IS NOT NULL
-            THEN (
-                s.sprint_completed_at AT TIME ZONE 'America/Sao_Paulo'
-            )::DATE + 1
-            ELSE (
-                s.sprint_end AT TIME ZONE 'America/Sao_Paulo'
-            )::DATE
-        END AS effective_end_date
-    FROM public.dim_sprint AS s
-        JOIN (SELECT DISTINCT sprint_id FROM capacity_source) AS cs
-      ON cs.sprint_id = s.sprint_id
+        w.sprint_id,
+        w.squad_id,
+        w.sprint_start,
+        w.sprint_completed_at,
+        w.effective_sprint_end_date AS effective_end_date
+    FROM public.vw_dashboard_sprint_window AS w
+    JOIN (
+        SELECT DISTINCT sprint_id, squad_id
+        FROM capacity_source
+    ) AS cs
+      ON cs.sprint_id = w.sprint_id
+     AND cs.squad_id = w.squad_id
 ),
 flow_day AS (
     SELECT DISTINCT ON (user_id, work_date)
@@ -131,6 +127,7 @@ capacity_day_summary AS (
     FROM capacity_source AS c
     JOIN sprint_windows AS w
       ON w.sprint_id = c.sprint_id
+     AND w.squad_id = c.squad_id
     CROSS JOIN LATERAL generate_series(
         (w.sprint_start AT TIME ZONE 'America/Sao_Paulo')::DATE,
         w.effective_end_date - 1,
@@ -222,6 +219,7 @@ capacity_detail AS (
     FROM capacity_source AS c
     JOIN sprint_windows AS w
       ON w.sprint_id = c.sprint_id
+     AND w.squad_id = c.squad_id
     JOIN capacity_day_summary AS d
       ON d.sprint_id = c.sprint_id
      AND d.user_id = c.user_id

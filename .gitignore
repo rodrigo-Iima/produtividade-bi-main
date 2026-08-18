@@ -2,6 +2,9 @@
 .env.*
 !.env.example
 deploy/ec2/.env
+deploy/local/.env
+deploy/local/runtime.env
+deploy/local/backups/
 
 __pycache__/
 *.py[cod]

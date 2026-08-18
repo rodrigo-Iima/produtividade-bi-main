@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
+import hashlib
 import re
 from threading import Lock
 
@@ -15,16 +16,28 @@ from models.dim_sprint import DimSprint
 from models.dim_ticket_jira import DimTicketJira
 from models.jira_sprint_changelog import JiraSprintChangelog
 from models.fato_jira_ticket_sprint import FatoJiraTicketSprint
+from models.fato_jira_status_transicao import FatoJiraStatusTransicao
+from models.etl_source_state import EtlSourceState
 from etl.sprint_scope import SPRINT_START_AFTER, sprint_is_in_scope
 
 
 class SprintChangelogETL:
-    """Extract and replace sprint changelog rows per updated Jira ticket."""
+    """Extract one Jira changelog and materialize sprint/status events.
+
+    Jira returns sprint and status changes in the same changelog response.  A
+    worker therefore fetches it exactly once per issue and fans the response
+    out to the two event facts.  Per-issue ``etl_source_state`` rows make a
+    backfill resumable without deleting the historical facts.
+    """
 
     SPRINT_FIELD_ID = JIRA_SPRINT_FIELD
 
-    def __init__(self, max_workers: int = 8):
-        self.client = JiraClient()
+    SOURCE_PREFIX = "jira_changelog:"
+    PIPELINE_NAME = "jira_sprint_and_status"
+    DEFAULT_PROJECTS = ("ZGT", "ZG", "ZGTN", "SRE")
+
+    def __init__(self, max_workers: int = 8, client: JiraClient | None = None):
+        self.client = client or JiraClient()
         self.max_workers = max_workers
         self._sprint_metadata_cache: dict[int, dict] = {}
         self._sprint_metadata_lock = Lock()
@@ -33,10 +46,20 @@ class SprintChangelogETL:
         self,
         incremental: bool = True,
         issue_keys: list[str] | None = None,
+        issue_types: tuple[str, ...] | list[str] | None = None,
+        resume: bool = False,
+        projects: tuple[str, ...] | list[str] | None = None,
     ) -> int:
         session = SessionLocal()
         try:
-            issue_keys = self._get_issue_keys(session, incremental, issue_keys)
+            issue_keys = self._get_issue_keys(
+                session,
+                incremental,
+                issue_keys,
+                issue_types=issue_types,
+                resume=resume,
+                projects=projects,
+            )
         finally:
             session.close()
 
@@ -81,14 +104,37 @@ class SprintChangelogETL:
         session,
         incremental: bool,
         issue_keys: list[str] | None = None,
+        issue_types: tuple[str, ...] | list[str] | None = None,
+        resume: bool = False,
+        projects: tuple[str, ...] | list[str] | None = None,
     ) -> list[str]:
         # Process every 2026 ticket when no upstream change list is supplied.
         # A ticket can have historical sprint changes while its current Jira
         # field is empty or points to another sprint. The orchestrator passes
         # the Jira extraction list to keep normal incremental runs efficient.
-        query = select(DimTicketJira.issue_key).where(
-            DimTicketJira.created_at >= SPRINT_START_AFTER
+        query = select(DimTicketJira.issue_key)
+        # The initial Epic scope starts in 2026.  An explicit child list is a
+        # deliberate audit request, however, and may contain a child created
+        # before that date because its Epic is in scope.
+        if issue_keys is None:
+            query = query.where(DimTicketJira.created_at >= SPRINT_START_AFTER)
+        project_scope = tuple(
+            str(project).strip().upper()
+            for project in (projects or self.DEFAULT_PROJECTS)
+            if str(project).strip()
         )
+        if project_scope:
+            query = query.where(DimTicketJira.project_key.in_(project_scope))
+        if issue_types:
+            normalized_types = tuple(
+                str(issue_type).strip().casefold()
+                for issue_type in issue_types
+                if str(issue_type).strip()
+            )
+            if normalized_types:
+                query = query.where(
+                    func.lower(DimTicketJira.issue_type_name).in_(normalized_types)
+                )
         failed_issue_keys = select(JiraSprintChangelog.issue_key).where(
             JiraSprintChangelog.processing_status == "failed"
         )
@@ -98,13 +144,32 @@ class SprintChangelogETL:
                 DimTicketJira.issue_key.in_(failed_issue_keys),
             ))
 
-        return [row[0] for row in session.execute(query).all()]
+        selected = [row[0] for row in session.execute(query).all()]
+        if not resume or not selected:
+            return selected
+
+        # Successful source states are durable checkpoints.  Failed and
+        # not-found states remain eligible so an operator can retry explicitly.
+        successful = {
+            source_name[len(self.SOURCE_PREFIX):]
+            for source_name, in session.execute(
+                select(EtlSourceState.source_name).where(
+                    EtlSourceState.source_name.like(f"{self.SOURCE_PREFIX}%"),
+                    EtlSourceState.status == "success",
+                )
+            ).all()
+            if source_name.startswith(self.SOURCE_PREFIX)
+        }
+        return [issue_key for issue_key in selected if issue_key not in successful]
 
     def _process_issue(self, issue_key: str) -> int:
         session = SessionLocal()
         try:
+            self._set_source_state(session, issue_key, status="running")
+            session.commit()
             histories = self.client.get_issue_changelog(issue_key)
             sprint_changes = self._extract_sprint_changes(histories)
+            status_transitions = self._extract_status_transitions(issue_key, histories)
             sprint_ids = self._load_sprint_ids(session)
 
             resolved_changes = []
@@ -158,6 +223,17 @@ class SprintChangelogETL:
                     ))
 
             session.add_all(records)
+            self._upsert_status_transitions(session, issue_key, status_transitions)
+            self._set_source_state(
+                session,
+                issue_key,
+                status="success",
+                rows_processed=len(sprint_changes) + len(status_transitions),
+                last_record_at=self._last_record_at(
+                    sprint_changes, status_transitions
+                ),
+                watermark_value=str(len(histories)),
+            )
             session.commit()
             return len(records)
         except Exception as exc:
@@ -167,6 +243,10 @@ class SprintChangelogETL:
             session.query(JiraSprintChangelog).filter(
                 JiraSprintChangelog.issue_key == issue_key
             ).delete(synchronize_session=False)
+            if is_not_found:
+                session.query(FatoJiraStatusTransicao).filter(
+                    FatoJiraStatusTransicao.issue_key == issue_key
+                ).update({"source_present": False}, synchronize_session=False)
             session.add(JiraSprintChangelog(
                 issue_key=issue_key,
                 sprint_id=None,
@@ -179,6 +259,16 @@ class SprintChangelogETL:
                 processing_status="not_found" if is_not_found else "failed",
                 error_message=str(exc),
             ))
+            self._set_source_state(
+                session,
+                issue_key,
+                # ``not_found`` is retained in the sprint cache as a source
+                # outcome, while the checkpoint contract uses its finite
+                # status vocabulary and keeps the item retryable.
+                status="failed",
+                error_code="not_found" if is_not_found else type(exc).__name__,
+                error_message=str(exc),
+            )
             session.commit()
             if is_not_found:
                 print(f"[SprintChangelogETL] Not found in Jira: {issue_key}")
@@ -334,6 +424,195 @@ class SprintChangelogETL:
                         })
         return changes
 
+    def _extract_status_transitions(
+        self,
+        issue_key: str,
+        histories: list[dict],
+    ) -> list[dict]:
+        """Extract every status event from the already-fetched changelog."""
+        transitions: list[dict] = []
+        for history_index, history in enumerate(histories):
+            created = history.get("created")
+            if not created:
+                continue
+            transition_at = self._parse_date(created)
+            author = history.get("author") or {}
+            history_id = str(history.get("id") or "").strip()
+            for item_index, item in enumerate(history.get("items", [])):
+                if item.get("fieldId") != "status" and item.get("field") != "status":
+                    continue
+                transition_key = self._transition_key(
+                    issue_key,
+                    history_id,
+                    item_index,
+                    transition_at,
+                    item,
+                    history_index=history_index,
+                )
+                transitions.append({
+                    "issue_key": issue_key,
+                    "transition_key": transition_key,
+                    "transition_at": transition_at,
+                    "from_status_id": self._as_text(item.get("from")),
+                    "from_status_name": self._as_text(item.get("fromString")),
+                    "to_status_id": self._as_text(item.get("to")),
+                    "to_status_name": self._as_text(item.get("toString")),
+                    "author_account_id": self._as_text(
+                        author.get("accountId") or author.get("key")
+                    ),
+                    "author_name": self._as_text(
+                        author.get("displayName") or author.get("name")
+                    ),
+                    "source_present": True,
+                })
+        return transitions
+
+    @staticmethod
+    def _as_text(value) -> str | None:
+        if value is None or value == "":
+            return None
+        return str(value)
+
+    @staticmethod
+    def _transition_key(
+        issue_key: str,
+        history_id: str,
+        item_index: int,
+        transition_at: datetime,
+        item: dict,
+        history_index: int | None = None,
+    ) -> str:
+        if history_id:
+            return f"jira:{history_id}:{item_index}"
+        raw = "|".join([
+            issue_key,
+            transition_at.isoformat(),
+            str(history_index if history_index is not None else ""),
+            str(item_index),
+            str(item.get("from") or ""),
+            str(item.get("to") or ""),
+            str(item.get("fromString") or ""),
+            str(item.get("toString") or ""),
+        ])
+        return f"hash:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
+
+    def _upsert_status_transitions(
+        self,
+        session,
+        issue_key: str,
+        transitions: list[dict],
+    ) -> None:
+        # A successful full changelog fetch is the source-of-truth snapshot
+        # for this issue.  Keep disappeared events auditable, but make them
+        # invisible to current-state views through source_present.
+        session.query(FatoJiraStatusTransicao).filter(
+            FatoJiraStatusTransicao.issue_key == issue_key
+        ).update({"source_present": False}, synchronize_session=False)
+        if not transitions:
+            return
+
+        now = datetime.now(timezone.utc)
+        unique_transitions = {
+            transition["transition_key"]: transition
+            for transition in transitions
+        }
+        values = [
+            {
+                **transition,
+                "loaded_at": now,
+            }
+            for transition in unique_transitions.values()
+        ]
+        statement = pg_insert(FatoJiraStatusTransicao).values(values)
+        excluded = statement.excluded
+        statement = statement.on_conflict_do_update(
+            index_elements=[
+                FatoJiraStatusTransicao.issue_key,
+                FatoJiraStatusTransicao.transition_key,
+            ],
+            set_={
+                "transition_at": excluded.transition_at,
+                "from_status_id": excluded.from_status_id,
+                "from_status_name": excluded.from_status_name,
+                "to_status_id": excluded.to_status_id,
+                "to_status_name": excluded.to_status_name,
+                "author_account_id": excluded.author_account_id,
+                "author_name": excluded.author_name,
+                "source_present": True,
+                "loaded_at": now,
+            },
+        )
+        session.execute(statement)
+
+    def _set_source_state(
+        self,
+        session,
+        issue_key: str,
+        status: str,
+        rows_processed: int = 0,
+        error_code: str | None = None,
+        error_message: str | None = None,
+        last_record_at: datetime | None = None,
+        watermark_value: str | None = None,
+    ) -> None:
+        now = datetime.now(timezone.utc)
+        source_name = f"{self.SOURCE_PREFIX}{issue_key}"[:80]
+        values = {
+            "source_name": source_name,
+            "pipeline_name": self.PIPELINE_NAME,
+            "last_attempt_at": now,
+            "status": status,
+            "rows_processed": rows_processed,
+            "error_code": error_code,
+            "error_message": error_message,
+            "watermark_at": last_record_at,
+            "last_record_at": last_record_at,
+            "watermark_value": watermark_value,
+            "updated_at": now,
+        }
+        if status == "success":
+            values["last_success_at"] = now
+        statement = pg_insert(EtlSourceState).values(values)
+        excluded = statement.excluded
+        statement = statement.on_conflict_do_update(
+            index_elements=[EtlSourceState.source_name],
+            set_={
+                "pipeline_name": excluded.pipeline_name,
+                "last_attempt_at": excluded.last_attempt_at,
+                "status": excluded.status,
+                "rows_processed": excluded.rows_processed,
+                "error_code": excluded.error_code,
+                "error_message": excluded.error_message,
+                "watermark_at": (
+                    excluded.watermark_at
+                    if status == "success"
+                    else EtlSourceState.watermark_at
+                ),
+                "last_record_at": excluded.last_record_at,
+                "watermark_value": excluded.watermark_value,
+                "updated_at": excluded.updated_at,
+                "last_success_at": (
+                    excluded.last_success_at
+                    if status == "success"
+                    else EtlSourceState.last_success_at
+                ),
+            },
+        )
+        session.execute(statement)
+
+    @staticmethod
+    def _last_record_at(
+        sprint_changes: list[dict],
+        status_transitions: list[dict],
+    ) -> datetime | None:
+        timestamps = [
+            change.get("changed_at") for change in sprint_changes
+        ] + [
+            transition.get("transition_at") for transition in status_transitions
+        ]
+        timestamps = [timestamp for timestamp in timestamps if timestamp is not None]
+        return max(timestamps) if timestamps else None
+
     @staticmethod
     def _parse_sprint_change(id_value, name_value: str | None) -> list[dict]:
         direct_id = int(id_value) if id_value and str(id_value).isdigit() else None
@@ -429,8 +708,14 @@ def run_sprint_changelog_etl(
     incremental: bool = True,
     max_workers: int = 8,
     issue_keys: list[str] | None = None,
+    issue_types: tuple[str, ...] | list[str] | None = None,
+    resume: bool = False,
+    projects: tuple[str, ...] | list[str] | None = None,
 ) -> int:
     return SprintChangelogETL(max_workers=max_workers).run(
         incremental=incremental,
         issue_keys=issue_keys,
+        issue_types=issue_types,
+        resume=resume,
+        projects=projects,
     )

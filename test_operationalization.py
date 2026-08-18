@@ -38,6 +38,7 @@ def test_local_runner_can_skip_database_acceptance():
         retry_delay=0,
         run_acceptance=False,
         etl_operation=lambda: 0,
+        snapshot_refresh_operation=lambda: None,
     ) == 0
 
 
@@ -100,6 +101,11 @@ def test_complete_schema_creates_dashboard_dependencies_before_capacity_views(
         "ensure_phase22_schema",
         "ensure_phase26_schema",
         "ensure_phase27_schema",
+        "ensure_phase28_schema",
+        "ensure_phase29_schema",
+        "ensure_phase30_schema",
+        "ensure_phase31_schema",
+        "ensure_phase32_schema",
     ]
     for name in migration_names:
         monkeypatch.setattr(
@@ -124,7 +130,7 @@ def test_complete_schema_creates_dashboard_dependencies_before_capacity_views(
     assert events.index("ensure_phase24_schema") < events.index(
         "ensure_dashboard_views"
     )
-    assert events[-1] == "ensure_phase27_schema"
+    assert events[-1] == "ensure_phase32_schema"
 
 
 if __name__ == "__main__":

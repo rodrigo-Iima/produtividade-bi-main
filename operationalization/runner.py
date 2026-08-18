@@ -13,6 +13,7 @@ def run_local(
     retry_delay: int = 10,
     run_acceptance: bool = True,
     etl_operation: Callable[[], int] | None = None,
+    snapshot_refresh_operation: Callable[[], None] | None = None,
 ) -> int:
     """Run the ETL once locally, optionally retrying and accepting the load.
 
@@ -30,8 +31,24 @@ def run_local(
     try:
         with LocalRunLock():
             exit_code = _run_with_retries(etl_operation, retries, retry_delay)
-            if exit_code != 0 or not run_acceptance:
+            if exit_code != 0:
                 return exit_code
+
+            try:
+                if snapshot_refresh_operation is None:
+                    from database.connection import engine
+                    from database.migrations.phase30 import refresh_phase30_snapshots
+
+                    snapshot_refresh_operation = lambda: refresh_phase30_snapshots(engine)
+
+                snapshot_refresh_operation()
+                print("[Operationalization] Snapshots do Analytics atualizados")
+            except Exception as exc:
+                print(f"[Operationalization] Falha ao atualizar snapshots: {exc}")
+                return 1
+
+            if not run_acceptance:
+                return 0
 
             try:
                 from etl.acceptance import write_acceptance_report

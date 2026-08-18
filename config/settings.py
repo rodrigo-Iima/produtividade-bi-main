@@ -47,6 +47,19 @@ def _env_csv_set(name: str, default: str = "") -> frozenset[str]:
     )
 
 
+def _env_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} inválido: use um número") from exc
+    if parsed < 0:
+        raise RuntimeError(f"{name} inválido: use zero ou um valor positivo")
+    return parsed
+
+
 DB_HOST = os.getenv("POSTGRES_HOST")
 DB_PORT = os.getenv("POSTGRES_PORT")
 DB_NAME = os.getenv("POSTGRES_DB")
@@ -118,3 +131,15 @@ ETL_AUTO_MIGRATE = _env_bool("ETL_AUTO_MIGRATE", True)
 JIRA_SQUAD_FIELD = os.getenv("JIRA_SQUAD_FIELD", "customfield_10431")
 JIRA_SPRINT_FIELD = os.getenv("JIRA_SPRINT_FIELD", "customfield_10010")
 JIRA_CROSSING_FIELD = os.getenv("JIRA_CROSSING_FIELD", "customfield_10894")
+JIRA_EPIC_LINK_FIELD = os.getenv("JIRA_EPIC_LINK_FIELD", "customfield_10014")
+JIRA_PLANNED_START_FIELD = os.getenv(
+    "JIRA_PLANNED_START_FIELD",
+    "customfield_11167",
+)
+JIRA_HTTP_TIMEOUT_SECONDS = _env_nonnegative_int(
+    "JIRA_HTTP_TIMEOUT_SECONDS",
+    30,
+)
+JIRA_MAX_RETRIES = _env_nonnegative_int("JIRA_MAX_RETRIES", 3)
+JIRA_RETRY_BACKOFF_SECONDS = _env_float("JIRA_RETRY_BACKOFF_SECONDS", 1.0)
+JIRA_PAGE_SIZE = _env_nonnegative_int("JIRA_PAGE_SIZE", 100)

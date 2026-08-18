@@ -39,6 +39,38 @@ STATUS_MAPPINGS: List[Tuple[str, str]] = [
 ]
 
 
+# Status semantics used by the portfolio history.  Jira status IDs are
+# project-specific, so the initial global rows use a normalized name key; a
+# project-specific row with the real ID can override it without changing the
+# event fact.  The ETL/view fallback also matches by status name.
+JIRA_STATUS_MAPPINGS: List[Dict[str, Any]] = [
+    {
+        "status_id": "name:em andamento",
+        "status_name": "Em andamento",
+        "status_group": "execucao",
+        "starts_execution": True,
+        "is_completion": False,
+    },
+    {
+        "status_id": "name:travado",
+        "status_name": "Travado",
+        "status_group": "execucao",
+        "starts_execution": False,
+        "is_completion": False,
+    },
+    *[
+        {
+            "status_id": f"name:{name.casefold()}",
+            "status_name": name,
+            "status_group": "concluido",
+            "starts_execution": False,
+            "is_completion": True,
+        }
+        for name in STATUS_CONCLUIDOS
+    ],
+]
+
+
 # Calendário configuration - Keep only 2026
 CALENDARIO_START_DATE = date(2026, 1, 1)
 CALENDARIO_END_DATE = date(2026, 12, 31)

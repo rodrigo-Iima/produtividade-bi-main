@@ -26,6 +26,11 @@ from database.migrations.phase24 import ensure_phase24_schema
 from database.migrations.phase25 import ensure_phase25_schema
 from database.migrations.phase26 import ensure_phase26_schema
 from database.migrations.phase27 import ensure_phase27_schema
+from database.migrations.phase28 import ensure_phase28_schema
+from database.migrations.phase29 import ensure_phase29_schema
+from database.migrations.phase30 import ensure_phase30_schema
+from database.migrations.phase31 import ensure_phase31_schema
+from database.migrations.phase32 import ensure_phase32_schema
 
 
 def ensure_schema() -> None:
@@ -72,3 +77,8 @@ def _ensure_complete_schema() -> None:
     # migrations still create them so upgrades and blank installs follow the
     # same dependency-safe path before converging on the canonical schema.
     ensure_phase27_schema(engine)
+    ensure_phase28_schema(engine)
+    ensure_phase29_schema(engine)
+    ensure_phase30_schema(engine)
+    ensure_phase31_schema(engine)
+    ensure_phase32_schema(engine)

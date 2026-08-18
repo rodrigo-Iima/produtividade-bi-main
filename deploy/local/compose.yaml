@@ -1,0 +1,91 @@
+name: produtividade-local
+
+x-db-common: &db-common
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: ${LOCAL_POSTGRES_DB:-produtividade_local}
+  POSTGRES_SSLMODE: disable
+
+x-etl-image: &etl-image
+  build:
+    context: ../..
+    dockerfile: Dockerfile.etl
+  init: true
+  restart: "no"
+  security_opt:
+    - no-new-privileges:true
+  env_file:
+    - ${LOCAL_RUNTIME_ENV_FILE:-runtime.env}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    shm_size: "1gb"
+    environment:
+      POSTGRES_DB: ${LOCAL_POSTGRES_DB:-produtividade_local}
+      POSTGRES_USER: ${LOCAL_POSTGRES_MIGRATOR_USER:-produtividade_migrator}
+      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_MIGRATOR_PASSWORD:?Defina LOCAL_POSTGRES_MIGRATOR_PASSWORD}
+      LOCAL_POSTGRES_ETL_PASSWORD: ${LOCAL_POSTGRES_ETL_PASSWORD:?Defina LOCAL_POSTGRES_ETL_PASSWORD}
+      LOCAL_POSTGRES_READER_PASSWORD: ${LOCAL_POSTGRES_READER_PASSWORD:?Defina LOCAL_POSTGRES_READER_PASSWORD}
+    ports:
+      - "${LOCAL_POSTGRES_BIND_ADDRESS:-127.0.0.1}:${LOCAL_POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    <<: *etl-image
+    command: ["migrate"]
+    profiles: ["tools"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *db-common
+      POSTGRES_USER: ${LOCAL_POSTGRES_MIGRATOR_USER:-produtividade_migrator}
+      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_MIGRATOR_PASSWORD:?Defina LOCAL_POSTGRES_MIGRATOR_PASSWORD}
+      ETL_AUTO_MIGRATE: "false"
+
+  etl:
+    <<: *etl-image
+    command: ["run"]
+    profiles: ["jobs"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *db-common
+      POSTGRES_USER: produtividade_etl
+      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_ETL_PASSWORD:?Defina LOCAL_POSTGRES_ETL_PASSWORD}
+      ETL_AUTO_MIGRATE: "false"
+
+  backup:
+    image: postgres:16-alpine
+    profiles: ["tools"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${LOCAL_POSTGRES_DB:-produtividade_local}
+      PGUSER: ${LOCAL_POSTGRES_MIGRATOR_USER:-produtividade_migrator}
+      PGPASSWORD: ${LOCAL_POSTGRES_MIGRATOR_PASSWORD:?Defina LOCAL_POSTGRES_MIGRATOR_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    command:
+      - sh
+      - -ec
+      - |
+        output="/backups/${LOCAL_POSTGRES_DB:-produtividade_local}_$$(date -u +%Y%m%dT%H%M%SZ).dump"
+        pg_dump --format=custom --no-owner --file="$$output"
+        echo "Backup criado em $$output"
+
+volumes:
+  postgres_data:

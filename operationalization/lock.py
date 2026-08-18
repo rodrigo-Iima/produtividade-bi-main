@@ -7,6 +7,8 @@ import fcntl
 import os
 from pathlib import Path
 
+from sqlalchemy import text
+
 
 DEFAULT_LOCK_PATH = Path(os.getenv("ETL_RUNTIME_DIR", ".runtime")) / "etl.lock"
 
@@ -56,6 +58,51 @@ class LocalRunLock:
             self._file = None
 
     def __enter__(self) -> "LocalRunLock":
+        self.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self.release()
+
+
+class PostgresAdvisoryLock:
+    """Session-level PostgreSQL lock shared by all project job runners."""
+
+    def __init__(self, name: str = "produtividade.project_pipeline", engine_ref=None):
+        self.name = name
+        self._engine = engine_ref
+        self._connection = None
+
+    def acquire(self) -> None:
+        if self._engine is None:
+            from database.connection import engine
+
+            self._engine = engine
+        self._connection = self._engine.connect()
+        acquired = self._connection.execute(
+            text("SELECT pg_try_advisory_lock(hashtext(:lock_name))"),
+            {"lock_name": self.name},
+        ).scalar()
+        if not acquired:
+            self._connection.close()
+            self._connection = None
+            raise RuntimeError(
+                f"Já existe uma execução de projetos em andamento ({self.name})"
+            )
+
+    def release(self) -> None:
+        if self._connection is None:
+            return
+        try:
+            self._connection.execute(
+                text("SELECT pg_advisory_unlock(hashtext(:lock_name))"),
+                {"lock_name": self.name},
+            )
+        finally:
+            self._connection.close()
+            self._connection = None
+
+    def __enter__(self) -> "PostgresAdvisoryLock":
         self.acquire()
         return self
 

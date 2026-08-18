@@ -8,9 +8,15 @@ from models.dim_squad import DimSquad
 from models.dim_squad_alias import DimSquadAlias
 from models.dim_status import DimStatus
 from models.dim_tag import DimTag
+from models.dim_jira_status_mapping import DimJiraStatusMapping
 from providers.tags_provider import TagsProvider, normalize_tag
 
-from .data import SQUAD_MAPPINGS, STATUS_MAPPINGS, generate_calendario_records
+from .data import (
+    JIRA_STATUS_MAPPINGS,
+    SQUAD_MAPPINGS,
+    STATUS_MAPPINGS,
+    generate_calendario_records,
+)
 
 
 def load_dim_squad(session: Session) -> int:
@@ -58,6 +64,24 @@ def load_dim_status(session: Session) -> int:
         ))
     print(f"[Seeding] Synced {len(STATUS_MAPPINGS)} Jira statuses")
     return len(STATUS_MAPPINGS)
+
+
+def load_dim_jira_status_mapping(session: Session) -> int:
+    """Seed the global Jira status semantics used by history views."""
+    for mapping in JIRA_STATUS_MAPPINGS:
+        session.merge(DimJiraStatusMapping(
+            project_key="*",
+            status_id=mapping["status_id"],
+            status_context="global",
+            status_name=mapping["status_name"],
+            status_group=mapping["status_group"],
+            starts_execution=mapping["starts_execution"],
+            is_completion=mapping["is_completion"],
+            is_active=True,
+            source="default",
+        ))
+    print(f"[Seeding] Synced {len(JIRA_STATUS_MAPPINGS)} Jira status semantics")
+    return len(JIRA_STATUS_MAPPINGS)
 
 
 def load_dim_calendario(session: Session, reference_date: date | None = None) -> int:

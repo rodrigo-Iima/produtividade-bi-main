@@ -34,6 +34,15 @@ def main() -> int:
         print(f"status={report['status']}")
         return 0 if report["status"] != "not_accepted" else 1
 
+    if args.command == "accept-projects":
+        from etl.project_acceptance import write_project_acceptance_report
+
+        json_path, markdown_path, report = write_project_acceptance_report()
+        print(json_path)
+        print(markdown_path)
+        print(f"status={report['status']}")
+        return 0 if report["status"] == "accepted" else 1
+
     if args.command == "backfill-estimates":
         from etl.jira import JiraService
 
@@ -64,10 +73,35 @@ def main() -> int:
         result = run_sprint_changelog_etl(
             incremental=False,
             max_workers=args.max_workers,
-            issue_keys=None,
+            issue_keys=args.issue_keys or None,
+            issue_types=tuple(args.issue_types) if args.issue_types else None,
+            resume=args.resume,
+            projects=tuple(args.projects) if args.projects else None,
         )
         print(json.dumps({"inserted": result}, ensure_ascii=False, indent=2))
         return 0
+
+    if args.command in {"run-projects", "backfill-projects"}:
+        from .projects import run_project_pipeline
+
+        report = run_project_pipeline(
+            full=args.command == "backfill-projects",
+            epic_start_date=args.from_date,
+            resume=args.resume,
+            projects=args.projects or None,
+            max_workers=args.max_workers,
+        )
+        print(json.dumps(report, ensure_ascii=False, indent=2, default=str))
+        return 0 if report["status"] == "success" else 1
+
+    if args.command in {"validate-projects", "reconcile-projects"}:
+        from .projects import run_project_check
+
+        exit_code, report = run_project_check(
+            "validate" if args.command == "validate-projects" else "reconcile"
+        )
+        _print_report(report, args.json)
+        return exit_code
 
     if args.command == "status":
         from .status import get_status
@@ -111,6 +145,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "acceptance", help="executa somente o aceite sobre o banco carregado"
     )
 
+    subparsers.add_parser(
+        "accept-projects",
+        help="executa o aceite específico do portfólio Jira",
+    )
+
     backfill_parser = subparsers.add_parser(
         "backfill-estimates",
         help="carrega o originalEstimate dos tickets Jira já persistidos",
@@ -140,6 +179,62 @@ def _build_parser() -> argparse.ArgumentParser:
         type=_positive_int,
         default=8,
     )
+    changelog_parser.add_argument(
+        "--issue-types",
+        nargs="+",
+        help="limita o backfill a tipos Jira (ex.: Epic); por padrão processa todo o escopo",
+    )
+    changelog_parser.add_argument(
+        "--projects",
+        nargs="+",
+        help="projetos Jira; por padrão usa ZGT ZG ZGTN SRE",
+    )
+    changelog_parser.add_argument(
+        "--issue-keys",
+        nargs="+",
+        help="lista explícita de issues para auditoria, inclusive filhos antigos",
+    )
+    changelog_parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="retoma ignorando itens com checkpoint de sucesso",
+    )
+
+    for command, help_text in (
+        ("run-projects", "executa a atualização incremental do portfólio Jira"),
+        ("backfill-projects", "executa o backfill completo do portfólio Jira"),
+    ):
+        project_parser = subparsers.add_parser(command, help=help_text)
+        project_parser.add_argument(
+            "--from",
+            dest="from_date",
+            default="2026-01-01",
+            type=_iso_date,
+            help="data inicial dos Epics (YYYY-MM-DD)",
+        )
+        project_parser.add_argument(
+            "--projects",
+            nargs="+",
+            help="projetos Jira; por padrão usa ZGT ZG ZGTN SRE",
+        )
+        project_parser.add_argument(
+            "--max-workers",
+            type=_positive_int,
+            default=8,
+            help="paralelismo do changelog de status",
+        )
+        project_parser.add_argument(
+            "--resume",
+            action="store_true",
+            help="retoma checkpoints de changelog já concluídos",
+        )
+
+    for command, help_text in (
+        ("validate-projects", "valida as views e invariantes do portfólio Jira"),
+        ("reconcile-projects", "reconcilia dimensões, hierarquia e views do portfólio"),
+    ):
+        check_parser = subparsers.add_parser(command, help=help_text)
+        check_parser.add_argument("--json", action="store_true")
 
     status_parser = subparsers.add_parser(
         "status", help="mostra as últimas execuções registradas"
@@ -173,6 +268,17 @@ def _positive_int(value: str) -> int:
     if parsed < 1:
         raise argparse.ArgumentTypeError("deve ser maior ou igual a um")
     return parsed
+
+
+def _iso_date(value: str) -> str:
+    from datetime import date
+
+    try:
+        return date.fromisoformat(value).isoformat()
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "deve usar o formato YYYY-MM-DD"
+        ) from exc
 
 
 if __name__ == "__main__":

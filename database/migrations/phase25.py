@@ -8,6 +8,8 @@ dashboard contract.
 
 from sqlalchemy import Engine, text
 
+from database.migrations.sprint_window import SPRINT_WINDOW_VIEW_SQL
+
 
 PHASE25_VERSION = 25
 
@@ -128,40 +130,6 @@ WITH tag_by_entry AS (
       ON esr.entry_id = e.entry_id
     LEFT JOIN public.vw_dashboard_valid_sprint AS ts
       ON ts.sprint_id = esr.ticket_sprint_id
-), sprint_windows AS (
-    SELECT
-        b.squad_id,
-        s.sprint_id,
-        s.sprint_name,
-        s.sprint_start,
-        s.sprint_end,
-        s.sprint_completed_at,
-        s.sprint_state,
-        CASE
-            WHEN LOWER(s.sprint_state) = 'closed'
-             AND s.sprint_completed_at IS NOT NULL
-            THEN (
-                (s.sprint_completed_at AT TIME ZONE 'America/Sao_Paulo')::DATE
-                + 1
-            )::TIMESTAMP AT TIME ZONE 'America/Sao_Paulo'
-            ELSE s.sprint_end
-        END AS effective_sprint_end_at,
-        LEAD(s.sprint_start) OVER (
-            PARTITION BY b.squad_id
-            ORDER BY s.sprint_start
-        ) AS next_sprint_start
-    FROM public.dim_sprint AS s
-    JOIN (
-        SELECT DISTINCT sprint_id, squad_id
-        FROM public.bridge_sprint_squad
-    ) AS b
-      ON b.sprint_id = s.sprint_id
-    WHERE s.sprint_start >= (
-              TIMESTAMP '2026-01-01 00:00:00'
-              AT TIME ZONE 'America/Sao_Paulo'
-          )
-      AND s.sprint_start <= CURRENT_TIMESTAMP
-      AND LOWER(s.sprint_state) IN ('active', 'closed')
 ), period_candidates AS (
     SELECT
         es.entry_id,
@@ -173,21 +141,12 @@ WITH tag_by_entry AS (
         s.effective_sprint_end_at,
         s.sprint_state
     FROM entry_source AS es
-    JOIN sprint_windows AS s
+    JOIN public.vw_dashboard_sprint_window AS s
       ON es.collaborator_squad_id = s.squad_id
      AND es.collaborator_squad_name <> 'Transversal'
      AND es.started_at IS NOT NULL
      AND es.started_at >= s.sprint_start
-     AND es.started_at < CASE
-             WHEN LOWER(s.sprint_state) = 'closed'
-              AND s.sprint_completed_at IS NOT NULL
-             THEN s.effective_sprint_end_at
-             ELSE COALESCE(
-                 s.next_sprint_start,
-                 s.sprint_end,
-                 CURRENT_TIMESTAMP
-             )
-         END
+     AND es.started_at < s.effective_sprint_end_at
 ), period_rollup AS (
     SELECT
         entry_id,
@@ -580,6 +539,7 @@ BEGIN
             public.vw_dashboard_entry_sprint,
             public.vw_dashboard_entry_tag,
             public.vw_dashboard_filter_sprint_squad,
+            public.vw_dashboard_sprint_window,
             public.vw_dashboard_sprint_kpis,
             public.vw_dashboard_sprint_productivity,
             public.vw_dashboard_sprint_squad,
@@ -636,6 +596,7 @@ def ensure_phase25_schema(engine: Engine) -> None:
     with engine.begin() as connection:
         connection.execute(text("SET LOCAL lock_timeout = '30s'"))
         connection.execute(text("SET LOCAL statement_timeout = '5min'"))
+        connection.exec_driver_sql(SPRINT_WINDOW_VIEW_SQL)
         connection.exec_driver_sql(CANONICAL_ENTRY_CONTRACT_SQL)
         connection.exec_driver_sql(GRANTS_SQL)
         connection.execute(

@@ -1,10 +1,12 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import re
 from typing import Optional
 
 from clients.jira_client import JiraClient
 from config.settings import (
     JIRA_CROSSING_FIELD,
+    JIRA_EPIC_LINK_FIELD,
+    JIRA_PLANNED_START_FIELD,
     JIRA_SQUAD_FIELD,
     JIRA_SPRINT_FIELD,
 )
@@ -14,11 +16,8 @@ from models.dim_ticket_jira import DimTicketJira
 from models.fato_jira_ticket_sprint import FatoJiraTicketSprint
 from models.jira_sprint_changelog import JiraSprintChangelog
 from models.bridge_clockify_entry_sprint import BridgeClockifyEntrySprint
-from models.bridge_clockify_entry_issue import BridgeClockifyEntryIssue
+from models.bridge_jira_issue_parent import BridgeJiraIssueParent
 from etl.sprint_scope import sprint_is_in_scope
-
-
-EXCLUDED_SQUADS = {"SWAT"}
 
 
 class JiraService:
@@ -33,13 +32,19 @@ class JiraService:
         "created",
         "updated",
         "resolutiondate",
+        "parent",
+        "subtasks",
+        "duedate",
         JIRA_SQUAD_FIELD,
+        JIRA_PLANNED_START_FIELD,
         JIRA_SPRINT_FIELD,
         JIRA_CROSSING_FIELD,
     ]
+    if JIRA_EPIC_LINK_FIELD:
+        FIELDS.append(JIRA_EPIC_LINK_FIELD)
 
-    def __init__(self):
-        self.client = JiraClient()
+    def __init__(self, client: JiraClient | None = None):
+        self.client = client or JiraClient()
 
     def run(self, projects: list[str] | None = None, incremental: bool = True):
         if projects is None:
@@ -59,31 +64,26 @@ class JiraService:
                 "transformed": 0,
                 "loaded": 0,
                 "issue_keys": [],
+                "pages_processed": self.client.last_metrics.get("pages", 0),
+                "retries": self.client.last_metrics.get("retries", 0),
             }
 
         transformed = []
-        excluded_issue_keys = []
-        skipped = 0
         for issue in raw_issues:
             record = self._transform_issue(issue)
-            if record is None:
-                if issue.get("key"):
-                    excluded_issue_keys.append(issue["key"])
-                skipped += 1
-            else:
+            if record is not None:
                 transformed.append(record)
 
-        if skipped:
-            print(f"[JiraETL] Skipped {skipped} tickets from excluded squads")
-
-        loaded = self._load(transformed, excluded_issue_keys)
+        loaded = self._load(transformed)
         print(f"[JiraETL] Loaded {len(transformed)} normalized tickets")
         return {
             "extracted": len(raw_issues),
             "transformed": len(transformed),
             "loaded": loaded,
-            "skipped": skipped,
+            "skipped": 0,
             "issue_keys": [record["ticket"].issue_key for record in transformed],
+            "pages_processed": self.client.last_metrics.get("pages", 0),
+            "retries": self.client.last_metrics.get("retries", 0),
         }
 
     def backfill_crossing_flags(
@@ -274,30 +274,48 @@ class JiraService:
         finally:
             session.close()
 
-    def _transform_issue(self, issue: dict) -> Optional[dict]:
-        fields = issue["fields"]
+    def _transform_issue(
+        self,
+        issue: dict,
+        forced_parent_key: str | None = None,
+        forced_relationship_type: str | None = None,
+    ) -> Optional[dict]:
+        fields = issue.get("fields") or {}
         squad_field = fields.get(JIRA_SQUAD_FIELD)
         squad_jira = squad_field.get("value") if isinstance(squad_field, dict) else None
-        if squad_jira in EXCLUDED_SQUADS:
-            return None
         issue_type_id, issue_type_name = self._parse_issue_type(fields.get("issuetype"))
+        parent_issue_key, relationship_type = self._parse_parent(
+            fields,
+            forced_parent_key=forced_parent_key,
+            forced_relationship_type=forced_relationship_type,
+        )
+
+        issue_key = issue.get("key")
+        if not issue_key:
+            return None
+        now = datetime.now(timezone.utc)
 
         ticket = DimTicketJira(
-            issue_key=issue["key"],
-            summary=fields["summary"],
-            status_original=fields["status"]["name"],
-            project_key=fields["project"]["key"],
-            project_name=fields["project"]["name"],
+            issue_key=issue_key,
+            summary=fields.get("summary") or "",
+            status_original=(fields.get("status") or {}).get("name") or "",
+            project_key=(fields.get("project") or {}).get("key") or "",
+            project_name=(fields.get("project") or {}).get("name") or "",
             issue_type_id=issue_type_id,
             issue_type_name=issue_type_name,
+            parent_issue_key=parent_issue_key,
+            planned_start_date=self._parse_day(fields.get(JIRA_PLANNED_START_FIELD)),
+            due_date=self._parse_day(fields.get("duedate")),
             original_estimate_seconds=self._parse_original_estimate_seconds(fields),
             squad_jira=squad_jira,
             atravessamento_flag=self._parse_crossing_flag(
                 fields.get(JIRA_CROSSING_FIELD)
             ),
-            created_at=self._parse_date(fields["created"]),
+            created_at=self._parse_date(fields.get("created")) or now,
             resolved_at=self._parse_date(fields.get("resolutiondate")),
-            updated_at=self._parse_date(fields["updated"]),
+            updated_at=self._parse_date(fields.get("updated")) or now,
+            last_seen_at=now,
+            source_present=True,
         )
 
         sprint_rows = []
@@ -333,17 +351,39 @@ class JiraService:
                 ),
             })
 
-        return {"ticket": ticket, "sprints": sprint_rows}
+        parent_relation = None
+        if parent_issue_key:
+            parent_relation = BridgeJiraIssueParent(
+                child_issue_key=ticket.issue_key,
+                parent_issue_key=parent_issue_key,
+                relationship_type=relationship_type or "parent",
+                source_present=True,
+                last_seen_at=now,
+            )
 
-    def _load(self, records: list[dict], excluded_issue_keys: list[str] | None = None) -> int:
+        return {
+            "ticket": ticket,
+            "sprints": sprint_rows,
+            "parent_relation": parent_relation,
+        }
+
+    def _load(self, records: list[dict]) -> int:
         session = SessionLocal()
         try:
-            self._delete_excluded_tickets(session, excluded_issue_keys or [])
             for record in records:
                 ticket: DimTicketJira = record["ticket"]
                 session.merge(ticket)
 
                 issue_key = ticket.issue_key
+                session.query(BridgeJiraIssueParent).filter(
+                    BridgeJiraIssueParent.child_issue_key == issue_key
+                ).update(
+                    {BridgeJiraIssueParent.source_present: False},
+                    synchronize_session=False,
+                )
+                parent_relation = record.get("parent_relation")
+                if parent_relation is not None:
+                    session.merge(parent_relation)
                 session.query(FatoJiraTicketSprint).filter(
                     FatoJiraTicketSprint.issue_key == issue_key
                 ).delete(synchronize_session=False)
@@ -371,27 +411,6 @@ class JiraService:
             raise
         finally:
             session.close()
-
-    @staticmethod
-    def _delete_excluded_tickets(session, issue_keys: list[str]) -> int:
-        """Remove tickets that became excluded, including dependent bridges."""
-        if not issue_keys:
-            return 0
-        session.query(BridgeClockifyEntryIssue).filter(
-            BridgeClockifyEntryIssue.issue_key.in_(issue_keys)
-        ).delete(synchronize_session=False)
-        session.query(JiraSprintChangelog).filter(
-            JiraSprintChangelog.issue_key.in_(issue_keys)
-        ).delete(synchronize_session=False)
-        session.query(FatoJiraTicketSprint).filter(
-            FatoJiraTicketSprint.issue_key.in_(issue_keys)
-        ).delete(synchronize_session=False)
-        deleted = session.query(DimTicketJira).filter(
-            DimTicketJira.issue_key.in_(issue_keys)
-        ).delete(synchronize_session=False)
-        if deleted:
-            print(f"[JiraETL] Removed {deleted} tickets outside the configured scope")
-        return deleted
 
     @staticmethod
     def _purge_out_of_scope_sprints(session=None) -> int:
@@ -476,6 +495,45 @@ class JiraService:
             str(issue_type_id) if issue_type_id is not None else None,
             str(issue_type_name).strip() if issue_type_name else None,
         )
+
+    @staticmethod
+    def _parse_parent(
+        fields: dict,
+        forced_parent_key: str | None = None,
+        forced_relationship_type: str | None = None,
+    ) -> tuple[str | None, str | None]:
+        """Normalize modern ``parent`` and legacy Epic Link payloads."""
+        parent = fields.get("parent")
+        if isinstance(parent, dict) and parent.get("key"):
+            return str(parent["key"]), "parent"
+
+        legacy = fields.get(JIRA_EPIC_LINK_FIELD)
+        if isinstance(legacy, dict):
+            legacy = legacy.get("key") or legacy.get("value") or legacy.get("id")
+        if isinstance(legacy, list):
+            legacy = legacy[0] if legacy else None
+        if legacy:
+            return str(legacy), "epic_link"
+        if forced_parent_key:
+            return forced_parent_key, forced_relationship_type or "parent"
+        return None, None
+
+    @staticmethod
+    def _parse_day(value) -> date | None:
+        """Parse Jira date/custom-date values without inventing timezone data."""
+        if value is None or value == "":
+            return None
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
+            return value
+        raw = str(value).strip()
+        if not raw:
+            return None
+        try:
+            return date.fromisoformat(raw[:10])
+        except ValueError:
+            return None
 
     @staticmethod
     def _parse_crossing_flag(value) -> Optional[bool]:
